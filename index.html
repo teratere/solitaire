@@ -459,21 +459,21 @@
      * カード要素のDOM生成
      * ===================================================================== */
     function getSuitSymbol(suit) {
-      switch(suit) {
-        case 'spades': return '♠';
-        case 'hearts': return '♥';
-        case 'clubs': return '♣';
-        case 'diamonds': return '♦';
-        default: return '';
-      }
+      const s = String(suit).toLowerCase();
+      if (s === 'spades') return '♠';
+      if (s === 'hearts') return '♥';
+      if (s === 'clubs') return '♣';
+      if (s === 'diamonds') return '♦';
+      return '';
     }
 
     function getRankText(rank) {
-      if (rank === 1) return 'A';
-      if (rank === 11) return 'J';
-      if (rank === 12) return 'Q';
-      if (rank === 13) return 'K';
-      return String(rank);
+      const r = Number(rank);
+      if (r === 1) return 'A';
+      if (r === 11) return 'J';
+      if (r === 12) return 'Q';
+      if (r === 13) return 'K';
+      return String(r);
     }
 
     /* 
@@ -483,7 +483,7 @@
       const color = isRed ? '#cc1111' : '#1f2937';
       const secColor = isRed ? '#eab308' : '#3b82f6';
       const char = rank === 11 ? 'J' : rank === 12 ? 'Q' : 'K';
-      const headTitle = rank === 11 ? 'JACK' : rank === 12 ? 'QUEEN' : 'KING';
+      const suitChar = getSuitSymbol(suit);
 
       // クラシックなダブルヘッド肖像画のSVGグラフィック
       return `
@@ -499,26 +499,20 @@
           
           <!-- 上半分 -->
           <g>
-            <!-- ローブ / マント -->
             <path d="M22 68 Q24 38 40 32 L60 32 Q76 38 78 68 Z" fill="${color}" opacity="0.85"/>
             <path d="M36 34 L50 48 L64 34 Z" fill="${secColor}"/>
-            <!-- 顔 -->
             <circle cx="50" cy="27" r="10" fill="#fed7aa" stroke="#334155" stroke-width="1"/>
-            <!-- 髪 -->
             <path d="M40 24 Q50 16 60 24 Q58 32 40 28 Z" fill="${rank === 12 ? '#f59e0b' : '#334155'}"/>
-            <!-- 目 & 髭/表情 -->
             <circle cx="46" cy="26" r="1" fill="#1e293b"/>
             <circle cx="54" cy="26" r="1" fill="#1e293b"/>
             ${rank === 13 ? '<path d="M44 31 Q50 34 56 31" stroke="#334155" stroke-width="1.5" fill="none"/>' : ''}
-            <!-- 冠 / 帽子 -->
             ${rank >= 12 ? `
               <path d="M41 18 L44 10 L50 14 L56 10 L59 18 Z" fill="${secColor}" stroke="#92400e" stroke-width="0.8"/>
             ` : `
               <path d="M40 18 Q50 12 60 18 Z" fill="${secColor}"/>
             `}
-            <!-- スートの象徴 -->
             <circle cx="50" cy="55" r="8" fill="#ffffff" stroke="${color}" stroke-width="0.8"/>
-            <text x="50" y="59" font-size="11" text-anchor="middle" fill="${color}" font-family="sans-serif">${getSuitSymbol(suit)}</text>
+            <text x="50" y="59" font-size="11" text-anchor="middle" fill="${color}" font-family="sans-serif">${suitChar}</text>
           </g>
 
           <!-- 分割線 (伝統の中央仕切り) -->
@@ -541,7 +535,7 @@
               <path d="M40 18 Q50 12 60 18 Z" fill="${secColor}"/>
             `}
             <circle cx="50" cy="55" r="8" fill="#ffffff" stroke="${color}" stroke-width="0.8"/>
-            <text x="50" y="59" font-size="11" text-anchor="middle" fill="${color}" font-family="sans-serif">${getSuitSymbol(suit)}</text>
+            <text x="50" y="59" font-size="11" text-anchor="middle" fill="${color}" font-family="sans-serif">${suitChar}</text>
           </g>
         </svg>
       `;
@@ -553,7 +547,7 @@
     function renderCardCenter(rank, suit, isRed) {
       const sym = getSuitSymbol(suit);
 
-      // 1. エース (A) : 伝統的な特大マーク（スペードAは特に格式高い装飾デザイン）
+      // 1. エース (A)
       if (rank === 1) {
         if (suit === 'spades') {
           return `
@@ -570,13 +564,12 @@
         `;
       }
 
-      // 2. 絵札 (J, Q, K) : 本格的な上下対称の肖像画アート
+      // 2. 絵札 (J, Q, K)
       if (rank >= 11) {
         return renderCourtSVG(rank, suit, isRed);
       }
 
-      // 3. 数字札 (2〜10) : トランプの規格に忠実な正確な絶対座標ピップ配置
-      // % 単位で位置決め (x: 22% / 50% / 78%, y: 14% 〜 86%)
+      // 3. 数字札 (2〜10)
       const pip = (left, top, inverted = false) => `
         <span class="absolute transform -translate-x-1/2 -translate-y-1/2 text-xs sm:text-sm select-none leading-none ${inverted ? 'rotate-180' : ''}"
               style="left: ${left}%; top: ${top}%;">
@@ -677,7 +670,7 @@
           </div>
         `;
       } else {
-        // 裏面パターン（本物のトランプと同じ白フチ＋全面幾何学模様）
+        // 裏面パターン
         el.innerHTML = `
           <div class="card-back-pattern pointer-events-none flex items-center justify-center">
             <div class="w-3.5 h-3.5 rounded-full border border-white/40 bg-blue-950/80 flex items-center justify-center shadow-sm">
