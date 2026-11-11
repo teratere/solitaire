@@ -45,7 +45,6 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
     }
 
-    /* トランプカード本体 */
     .playing-card {
       aspect-ratio: 2.5 / 3.5;
       border-radius: 7px;
@@ -72,6 +71,7 @@
     .card-front {
       background: linear-gradient(135deg, #ffffff 0%, #fbfbfa 60%, #f4f3ef 100%);
       border: 1px solid #dcdad5;
+      overflow: hidden;
     }
 
     .card-back {
@@ -223,6 +223,26 @@
     const SUIT_COLORS = { spade: 'black', heart: 'red', diamond: 'red', club: 'black' };
     const RANK_LABELS = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 
+    // 世界標準のSVGプレイングカード画像（Wikimedia Commons パブリックドメイン・クラシック版）
+    const WIKI_SVG_BASE = "https://upload.wikimedia.org/wikipedia/commons/";
+    const COURT_CARD_URLS = {
+      // Jack
+      "11_club":    WIKI_SVG_BASE + "b/b7/English_pattern_jack_of_clubs.svg",
+      "11_diamond": WIKI_SVG_BASE + "e/ea/English_pattern_jack_of_diamonds.svg",
+      "11_heart":   WIKI_SVG_BASE + "5/56/English_pattern_jack_of_hearts.svg",
+      "11_spade":   WIKI_SVG_BASE + "4/4f/English_pattern_jack_of_spades.svg",
+      // Queen
+      "12_club":    WIKI_SVG_BASE + "f/f2/English_pattern_queen_of_clubs.svg",
+      "12_diamond": WIKI_SVG_BASE + "0/0e/English_pattern_queen_of_diamonds.svg",
+      "12_heart":   WIKI_SVG_BASE + "9/9d/English_pattern_queen_of_hearts.svg",
+      "12_spade":   WIKI_SVG_BASE + "c/ca/English_pattern_queen_of_spades.svg",
+      // King
+      "13_club":    WIKI_SVG_BASE + "2/22/English_pattern_king_of_clubs.svg",
+      "13_diamond": WIKI_SVG_BASE + "1/1c/English_pattern_king_of_diamonds.svg",
+      "13_heart":   WIKI_SVG_BASE + "1/14/English_pattern_king_of_hearts.svg",
+      "13_spade":   WIKI_SVG_BASE + "f/f1/English_pattern_king_of_spades.svg"
+    };
+
     let stock = [];
     let waste = [];
     let foundations = [[], [], [], []];
@@ -351,61 +371,20 @@
       render();
     }
 
-    // 本格的J/Q/Kダブルヘッド肖像画SVGエンジン
-    function getCourtCardPortrait(rank, suit, colorClass) {
-      const isRed = colorClass === 'suit-red';
-      const cPrimary = isRed ? '#dc2626' : '#1e293b';
-      const cGold = '#d97706';
-      const cSkin = '#fed7aa';
-      const cRobe = isRed ? '#fee2e2' : '#e2e8f0';
-
-      let headSvg = '';
-      if (rank === 11) { // Jack (兜＋剣)
-        headSvg = `
-          <path d="M 28 35 Q 28 22 50 22 Q 72 22 72 35 Z" fill="${cGold}"/>
-          <circle cx="50" cy="40" r="14" fill="${cSkin}"/>
-          <circle cx="45" cy="38" r="1.8" fill="#000"/><circle cx="55" cy="38" r="1.8" fill="#000"/>
-          <path d="M 46 47 Q 50 49 54 47" stroke="${cPrimary}" stroke-width="1.8" fill="none"/>
-          <path d="M 32 50 L 68 50 L 76 68 L 24 68 Z" fill="${cRobe}" stroke="${cPrimary}" stroke-width="1.5"/>
-          <path d="M 70 30 L 74 65 M 68 38 L 76 38" stroke="${cGold}" stroke-width="2.5"/>
-        `;
-      } else if (rank === 12) { // Queen (ティアラ＋ヴェール)
-        headSvg = `
-          <path d="M 30 20 L 36 32 L 50 18 L 64 32 L 70 20 L 66 35 L 34 35 Z" fill="${cGold}"/>
-          <circle cx="50" cy="41" r="13" fill="${cSkin}"/>
-          <circle cx="45" cy="40" r="1.8" fill="#000"/><circle cx="55" cy="40" r="1.8" fill="#000"/>
-          <path d="M 47 48 Q 50 51 53 48" stroke="#e11d48" stroke-width="2" fill="none"/>
-          <path d="M 34 51 Q 50 54 66 51 L 74 68 L 26 68 Z" fill="${cRobe}" stroke="${cPrimary}" stroke-width="1.5"/>
-          <circle cx="50" cy="28" r="2.5" fill="#38bdf8"/>
-        `;
-      } else if (rank === 13) { // King (王冠＋豊かな髭)
-        headSvg = `
-          <path d="M 28 22 L 35 34 L 50 20 L 65 34 L 72 22 L 68 35 L 32 35 Z" fill="${cGold}"/>
-          <circle cx="50" cy="41" r="14" fill="${cSkin}"/>
-          <circle cx="45" cy="38" r="1.8" fill="#000"/><circle cx="55" cy="38" r="1.8" fill="#000"/>
-          <path d="M 40 45 Q 50 43 60 45 Q 50 56 40 45 Z" fill="${cPrimary}"/>
-          <path d="M 30 52 L 70 52 L 78 68 L 22 68 Z" fill="${cRobe}" stroke="${cGold}" stroke-width="2"/>
+    // カード描画（絵札は本物のSVG画像を使用）
+    function renderCardInner(card) {
+      // 1. 絵札 (J, Q, K) は本物のトランプSVGカード全体をそのまま美しく表示
+      if (card.rank >= 11) {
+        const key = `${card.rank}_${card.suit}`;
+        const imgUrl = COURT_CARD_URLS[key];
+        return `
+          <div class="w-full h-full p-0.5 pointer-events-none">
+            <img src="${imgUrl}" alt="${RANK_LABELS[card.rank]}" class="w-full h-full object-fill rounded-[5px]" loading="lazy">
+          </div>
         `;
       }
 
-      return `
-        <div class="absolute inset-x-2 sm:inset-x-2.5 inset-y-2 border border-slate-300 rounded overflow-hidden pointer-events-none bg-slate-50/50">
-          <svg viewBox="0 0 100 140" class="w-full h-full">
-            <rect x="0" y="0" width="100" height="140" fill="none"/>
-            <!-- 上側ヘッド -->
-            <g>${headSvg}</g>
-            <!-- 中央の仕切りラインとスート -->
-            <line x1="6" y1="70" x2="94" y2="70" stroke="${cGold}" stroke-width="1.5" stroke-dasharray="3 2"/>
-            <circle cx="50" cy="70" r="8" fill="#ffffff" stroke="${cGold}" stroke-width="1.5"/>
-            <text x="50" y="74" text-anchor="middle" font-size="11" font-weight="bold" fill="${cPrimary}">${SUIT_ICONS[suit]}</text>
-            <!-- 下側ヘッド（180度反転） -->
-            <g transform="rotate(180 50 70)">${headSvg}</g>
-          </svg>
-        </div>
-      `;
-    }
-
-    function renderCardInner(card) {
+      // 2. A〜10の数字札
       const rankStr = RANK_LABELS[card.rank] || card.rank;
       const colorClass = card.color === 'red' ? 'suit-red' : 'suit-black';
       const icon = SUIT_ICONS[card.suit];
@@ -442,8 +421,6 @@
             </div>
           `;
         }
-      } else if (card.rank >= 11) { // J, Q, K
-        centerHTML = getCourtCardPortrait(card.rank, card.suit, colorClass);
       } else { // 2 〜 10
         let pips = '';
         const r = card.rank;
@@ -504,7 +481,7 @@
       el.classList.add('card-front', 'can-drag');
       el.innerHTML = renderCardInner(card);
 
-      // ポインタードラッグ初期化
+      // マウス＆タッチ完全対応ドラッグイベント
       el.addEventListener('pointerdown', (e) => startPointerDrag(e, card, source, col, row));
 
       return el;
@@ -573,10 +550,8 @@
     }
 
     // -------------------------------------------------------------
-    // 高信頼性ポインタードラッグシステム（マウス＆タッチ完全連動）
+    // ドラッグ＆ドロップ完全動作エンジン
     // -------------------------------------------------------------
-    let activeDrag = null;
-
     function startPointerDrag(e, card, source, col, row) {
       if (isAutoCompleting || e.button === 2) return;
 
@@ -609,13 +584,12 @@
         const dx = moveEvent.clientX - startX;
         const dy = moveEvent.clientY - startY;
 
-        if (!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
           isDragging = true;
-          activeDrag = { source, col, row, movingCards };
           movingElements.forEach((el, idx) => {
             el.classList.add('dragging');
             el.style.zIndex = String(9000 + idx);
-            el.style.pointerEvents = 'none'; // 下のドロップ先スロットを拾えるようにする
+            el.style.pointerEvents = 'none'; // ドロップ先の下地スロットを検出可能にする
           });
         }
 
@@ -637,10 +611,7 @@
         window.removeEventListener('pointerup', onPointerUp);
 
         if (isDragging) {
-          // ドロップ先判定
           const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-          let handled = false;
-
           if (dropTarget) {
             const slot = dropTarget.closest('.card-slot');
             if (slot) {
@@ -652,7 +623,6 @@
                   executeMove(source, col, row, 'foundation', targetFIdx, movingCards);
                   score += 10;
                   playSound('foundation');
-                  handled = true;
                 }
               } else if (slotId.startsWith('tableau-')) {
                 const targetTIdx = parseInt(slotId.replace('tableau-', ''), 10);
@@ -661,16 +631,13 @@
                   executeMove(source, col, row, 'tableau', targetTIdx, movingCards);
                   score += 5;
                   playSound('place');
-                  handled = true;
                 }
               }
             }
           }
-
-          activeDrag = null;
-          render(); // 元の位置、または移動後の位置へ再描画
+          render();
         } else {
-          // ドラッグせずクリック（タップ）で離した場合は自動移動を試行
+          // タップ操作による自動移動
           tryAutoMove(card, source, col, row);
         }
       }
