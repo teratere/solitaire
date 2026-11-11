@@ -51,3 +51,5 @@ PC（マウス・キーボード）とスマートフォン・タブレット（
 - **完全スタンドアロン:** 外部サーバーや画像ファイルへの依存なし（単一HTMLファイル完結）
 
 ---
+## 🂠 Assets & License
+- Playing card graphics: [SVG-cards](https://github.com/hayeah/playing-cards-assets) (Public Domain / LGPL)
