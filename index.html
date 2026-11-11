@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
@@ -34,6 +34,9 @@
 
     .font-card {
       font-family: 'Playfair Display', Georgia, serif;
+    }
+    .font-royal {
+      font-family: 'Cinzel', Georgia, serif;
     }
 
     .card-slot {
@@ -223,26 +226,6 @@
     const SUIT_COLORS = { spade: 'black', heart: 'red', diamond: 'red', club: 'black' };
     const RANK_LABELS = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 
-    // 世界標準のSVGプレイングカード画像（Wikimedia Commons パブリックドメイン・クラシック版）
-    const WIKI_SVG_BASE = "https://upload.wikimedia.org/wikipedia/commons/";
-    const COURT_CARD_URLS = {
-      // Jack
-      "11_club":    WIKI_SVG_BASE + "b/b7/English_pattern_jack_of_clubs.svg",
-      "11_diamond": WIKI_SVG_BASE + "e/ea/English_pattern_jack_of_diamonds.svg",
-      "11_heart":   WIKI_SVG_BASE + "5/56/English_pattern_jack_of_hearts.svg",
-      "11_spade":   WIKI_SVG_BASE + "4/4f/English_pattern_jack_of_spades.svg",
-      // Queen
-      "12_club":    WIKI_SVG_BASE + "f/f2/English_pattern_queen_of_clubs.svg",
-      "12_diamond": WIKI_SVG_BASE + "0/0e/English_pattern_queen_of_diamonds.svg",
-      "12_heart":   WIKI_SVG_BASE + "9/9d/English_pattern_queen_of_hearts.svg",
-      "12_spade":   WIKI_SVG_BASE + "c/ca/English_pattern_queen_of_spades.svg",
-      // King
-      "13_club":    WIKI_SVG_BASE + "2/22/English_pattern_king_of_clubs.svg",
-      "13_diamond": WIKI_SVG_BASE + "1/1c/English_pattern_king_of_diamonds.svg",
-      "13_heart":   WIKI_SVG_BASE + "1/14/English_pattern_king_of_hearts.svg",
-      "13_spade":   WIKI_SVG_BASE + "f/f1/English_pattern_king_of_spades.svg"
-    };
-
     let stock = [];
     let waste = [];
     let foundations = [[], [], [], []];
@@ -371,20 +354,45 @@
       render();
     }
 
-    // カード描画（絵札は本物のSVG画像を使用）
-    function renderCardInner(card) {
-      // 1. 絵札 (J, Q, K) は本物のトランプSVGカード全体をそのまま美しく表示
-      if (card.rank >= 11) {
-        const key = `${card.rank}_${card.suit}`;
-        const imgUrl = COURT_CARD_URLS[key];
-        return `
-          <div class="w-full h-full p-0.5 pointer-events-none">
-            <img src="${imgUrl}" alt="${RANK_LABELS[card.rank]}" class="w-full h-full object-fill rounded-[5px]" loading="lazy">
-          </div>
-        `;
+    // 上品で格式高いロイヤル・エンブレム絵柄（完全ローカル描画・エラー知らず）
+    function getRoyalCourtBadge(rank, suit, colorClass) {
+      let icon = '';
+      let title = '';
+      if (rank === 11) {
+        icon = 'fa-solid fa-shield-halved';
+        title = 'JACK';
+      } else if (rank === 12) {
+        icon = 'fa-solid fa-gem';
+        title = 'QUEEN';
+      } else if (rank === 13) {
+        icon = 'fa-solid fa-crown';
+        title = 'KING';
       }
 
-      // 2. A〜10の数字札
+      return `
+        <div class="absolute inset-x-3 inset-y-2 border border-slate-300/80 rounded bg-gradient-to-b from-slate-50/90 via-amber-50/30 to-slate-50/90 flex flex-col items-center justify-between py-1.5 pointer-events-none shadow-inner ${colorClass}">
+          <div class="flex items-center gap-1 opacity-75">
+            <span class="text-[8px] font-bold font-royal tracking-widest">${title}</span>
+            <span class="text-[9px]">${SUIT_ICONS[suit]}</span>
+          </div>
+
+          <!-- 上下対称の洗練されたゴールドエンブレム -->
+          <div class="flex flex-col items-center justify-center my-auto">
+            <div class="w-8 h-8 rounded-full border border-amber-500/30 bg-white shadow-sm flex items-center justify-center text-amber-600 text-sm mb-1">
+              <i class="${icon}"></i>
+            </div>
+            <div class="text-xs font-bold">${SUIT_ICONS[suit]}</div>
+          </div>
+
+          <div class="flex items-center gap-1 opacity-75 rotate-180">
+            <span class="text-[8px] font-bold font-royal tracking-widest">${title}</span>
+            <span class="text-[9px]">${SUIT_ICONS[suit]}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCardInner(card) {
       const rankStr = RANK_LABELS[card.rank] || card.rank;
       const colorClass = card.color === 'red' ? 'suit-red' : 'suit-black';
       const icon = SUIT_ICONS[card.suit];
@@ -421,6 +429,8 @@
             </div>
           `;
         }
+      } else if (card.rank >= 11) { // J, Q, K
+        centerHTML = getRoyalCourtBadge(card.rank, card.suit, colorClass);
       } else { // 2 〜 10
         let pips = '';
         const r = card.rank;
@@ -481,7 +491,6 @@
       el.classList.add('card-front', 'can-drag');
       el.innerHTML = renderCardInner(card);
 
-      // マウス＆タッチ完全対応ドラッグイベント
       el.addEventListener('pointerdown', (e) => startPointerDrag(e, card, source, col, row));
 
       return el;
@@ -589,7 +598,7 @@
           movingElements.forEach((el, idx) => {
             el.classList.add('dragging');
             el.style.zIndex = String(9000 + idx);
-            el.style.pointerEvents = 'none'; // ドロップ先の下地スロットを検出可能にする
+            el.style.pointerEvents = 'none';
           });
         }
 
@@ -637,7 +646,6 @@
           }
           render();
         } else {
-          // タップ操作による自動移動
           tryAutoMove(card, source, col, row);
         }
       }
