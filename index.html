@@ -8,11 +8,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Playfair+Display:ital,wght@0,600;0,900;1,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
-    /* WebKit等でポインタが消失しない安全な標準カーソル指定 */
     * {
       box-sizing: border-box;
       user-select: none;
@@ -54,32 +53,27 @@
       width: 100%;
       top: 0;
       left: 0;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      transition: box-shadow 0.15s ease;
       cursor: pointer !important;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0,0,0,0.2);
+      touch-action: none;
     }
 
-    .playing-card[draggable="true"] {
+    .playing-card.can-drag {
       cursor: grab !important;
     }
-    .playing-card:active {
-      cursor: grabbing !important;
-    }
-
     .playing-card.dragging {
-      opacity: 0.9;
-      transform: scale(1.04);
+      cursor: grabbing !important;
+      opacity: 0.95;
       box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6) !important;
       z-index: 9999 !important;
     }
 
-    /* 表面（白地・高級感のあるアイボリー） */
     .card-front {
       background: linear-gradient(135deg, #ffffff 0%, #fbfbfa 60%, #f4f3ef 100%);
       border: 1px solid #dcdad5;
     }
 
-    /* 裏面（Apps Hubキューブメダリオン） */
     .card-back {
       background: #1e3a8a;
       border: 2px solid #ffffff;
@@ -101,7 +95,6 @@
     .suit-red { color: #dc2626; fill: #dc2626; }
     .suit-black { color: #1e293b; fill: #1e293b; }
 
-    /* ヒント枠 */
     .hint-source {
       box-shadow: 0 0 0 3px #facc15, 0 0 18px rgba(250, 204, 21, 0.8) !important;
       z-index: 50 !important;
@@ -111,7 +104,6 @@
       z-index: 50 !important;
     }
 
-    /* トランプのピップ配置グリッド */
     .pips-grid {
       position: absolute;
       inset: 18% 14%;
@@ -132,7 +124,6 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-  <!-- Header -->
   <header class="bg-black/35 backdrop-blur-md border-b border-white/10 px-4 py-2.5 sticky top-0 z-40">
     <div class="max-w-4xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -154,7 +145,6 @@
     </div>
   </header>
 
-  <!-- Controls Bar -->
   <div class="max-w-4xl mx-auto w-full px-3 py-2 flex items-center justify-between gap-2 text-xs">
     <div class="flex gap-2">
       <button onclick="newGame()" class="bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5 shadow-sm">
@@ -174,53 +164,38 @@
     </div>
   </div>
 
-  <!-- Game Board -->
   <main class="max-w-4xl mx-auto w-full px-2 sm:px-4 py-3 flex-1 flex flex-col justify-start">
-    
-    <!-- Top Row: Stock / Waste / Spacer / Foundations -->
     <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-6">
-      
-      <!-- 1: Stock (山札) -->
       <div id="stock-slot" onclick="drawStock()" class="card-slot flex items-center justify-center cursor-pointer hover:border-white/40 transition">
         <i class="fa-solid fa-rotate-left text-white/30 text-xl"></i>
       </div>
-
-      <!-- 2: Waste (捨て札) -->
       <div id="waste-slot" class="card-slot"></div>
-
-      <!-- 3: Spacer -->
       <div class="pointer-events-none"></div>
-
-      <!-- 4-7: Foundations (組札 ♠ ♥ ♦ ♣) -->
-      <div id="foundation-0" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'foundation', 0)" class="card-slot flex items-center justify-center">
+      <div id="foundation-0" class="card-slot flex items-center justify-center">
         <span class="text-white/20 text-3xl font-bold">♠</span>
       </div>
-      <div id="foundation-1" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'foundation', 1)" class="card-slot flex items-center justify-center">
+      <div id="foundation-1" class="card-slot flex items-center justify-center">
         <span class="text-rose-400/25 text-3xl font-bold">♥</span>
       </div>
-      <div id="foundation-2" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'foundation', 2)" class="card-slot flex items-center justify-center">
+      <div id="foundation-2" class="card-slot flex items-center justify-center">
         <span class="text-rose-400/25 text-3xl font-bold">♦</span>
       </div>
-      <div id="foundation-3" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'foundation', 3)" class="card-slot flex items-center justify-center">
+      <div id="foundation-3" class="card-slot flex items-center justify-center">
         <span class="text-white/20 text-3xl font-bold">♣</span>
       </div>
-
     </div>
 
-    <!-- Bottom Row: 7 Tableaus (場札) -->
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 flex-1 min-h-[420px]">
-      <div id="tableau-0" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 0)" class="card-slot"></div>
-      <div id="tableau-1" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 1)" class="card-slot"></div>
-      <div id="tableau-2" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 2)" class="card-slot"></div>
-      <div id="tableau-3" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 3)" class="card-slot"></div>
-      <div id="tableau-4" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 4)" class="card-slot"></div>
-      <div id="tableau-5" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 5)" class="card-slot"></div>
-      <div id="tableau-6" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'tableau', 6)" class="card-slot"></div>
+    <div class="grid grid-cols-7 gap-2 sm:gap-3 flex-1 min-h-[440px]">
+      <div id="tableau-0" class="card-slot"></div>
+      <div id="tableau-1" class="card-slot"></div>
+      <div id="tableau-2" class="card-slot"></div>
+      <div id="tableau-3" class="card-slot"></div>
+      <div id="tableau-4" class="card-slot"></div>
+      <div id="tableau-5" class="card-slot"></div>
+      <div id="tableau-6" class="card-slot"></div>
     </div>
-
   </main>
 
-  <!-- Clear Modal -->
   <div id="win-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4">
     <div class="bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl relative">
       <div class="w-16 h-16 rounded-2xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-3xl mx-auto mb-4 border border-amber-400/30">
@@ -316,7 +291,6 @@
           });
         }
       });
-      // Fisher-Yates シャッフル
       for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -377,13 +351,65 @@
       render();
     }
 
-    // 本格的ピップ・肖像画レンダリングエンジン
+    // 本格的J/Q/Kダブルヘッド肖像画SVGエンジン
+    function getCourtCardPortrait(rank, suit, colorClass) {
+      const isRed = colorClass === 'suit-red';
+      const cPrimary = isRed ? '#dc2626' : '#1e293b';
+      const cGold = '#d97706';
+      const cSkin = '#fed7aa';
+      const cRobe = isRed ? '#fee2e2' : '#e2e8f0';
+
+      let headSvg = '';
+      if (rank === 11) { // Jack (兜＋剣)
+        headSvg = `
+          <path d="M 28 35 Q 28 22 50 22 Q 72 22 72 35 Z" fill="${cGold}"/>
+          <circle cx="50" cy="40" r="14" fill="${cSkin}"/>
+          <circle cx="45" cy="38" r="1.8" fill="#000"/><circle cx="55" cy="38" r="1.8" fill="#000"/>
+          <path d="M 46 47 Q 50 49 54 47" stroke="${cPrimary}" stroke-width="1.8" fill="none"/>
+          <path d="M 32 50 L 68 50 L 76 68 L 24 68 Z" fill="${cRobe}" stroke="${cPrimary}" stroke-width="1.5"/>
+          <path d="M 70 30 L 74 65 M 68 38 L 76 38" stroke="${cGold}" stroke-width="2.5"/>
+        `;
+      } else if (rank === 12) { // Queen (ティアラ＋ヴェール)
+        headSvg = `
+          <path d="M 30 20 L 36 32 L 50 18 L 64 32 L 70 20 L 66 35 L 34 35 Z" fill="${cGold}"/>
+          <circle cx="50" cy="41" r="13" fill="${cSkin}"/>
+          <circle cx="45" cy="40" r="1.8" fill="#000"/><circle cx="55" cy="40" r="1.8" fill="#000"/>
+          <path d="M 47 48 Q 50 51 53 48" stroke="#e11d48" stroke-width="2" fill="none"/>
+          <path d="M 34 51 Q 50 54 66 51 L 74 68 L 26 68 Z" fill="${cRobe}" stroke="${cPrimary}" stroke-width="1.5"/>
+          <circle cx="50" cy="28" r="2.5" fill="#38bdf8"/>
+        `;
+      } else if (rank === 13) { // King (王冠＋豊かな髭)
+        headSvg = `
+          <path d="M 28 22 L 35 34 L 50 20 L 65 34 L 72 22 L 68 35 L 32 35 Z" fill="${cGold}"/>
+          <circle cx="50" cy="41" r="14" fill="${cSkin}"/>
+          <circle cx="45" cy="38" r="1.8" fill="#000"/><circle cx="55" cy="38" r="1.8" fill="#000"/>
+          <path d="M 40 45 Q 50 43 60 45 Q 50 56 40 45 Z" fill="${cPrimary}"/>
+          <path d="M 30 52 L 70 52 L 78 68 L 22 68 Z" fill="${cRobe}" stroke="${cGold}" stroke-width="2"/>
+        `;
+      }
+
+      return `
+        <div class="absolute inset-x-2 sm:inset-x-2.5 inset-y-2 border border-slate-300 rounded overflow-hidden pointer-events-none bg-slate-50/50">
+          <svg viewBox="0 0 100 140" class="w-full h-full">
+            <rect x="0" y="0" width="100" height="140" fill="none"/>
+            <!-- 上側ヘッド -->
+            <g>${headSvg}</g>
+            <!-- 中央の仕切りラインとスート -->
+            <line x1="6" y1="70" x2="94" y2="70" stroke="${cGold}" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <circle cx="50" cy="70" r="8" fill="#ffffff" stroke="${cGold}" stroke-width="1.5"/>
+            <text x="50" y="74" text-anchor="middle" font-size="11" font-weight="bold" fill="${cPrimary}">${SUIT_ICONS[suit]}</text>
+            <!-- 下側ヘッド（180度反転） -->
+            <g transform="rotate(180 50 70)">${headSvg}</g>
+          </svg>
+        </div>
+      `;
+    }
+
     function renderCardInner(card) {
       const rankStr = RANK_LABELS[card.rank] || card.rank;
       const colorClass = card.color === 'red' ? 'suit-red' : 'suit-black';
       const icon = SUIT_ICONS[card.suit];
 
-      // コーナーインデックス
       const cornerTop = `
         <div class="absolute top-1 left-1.5 flex flex-col items-center leading-none pointer-events-none ${colorClass}">
           <span class="text-[12px] sm:text-[13px] font-black font-card tracking-tighter">${rankStr}</span>
@@ -399,8 +425,7 @@
 
       let centerHTML = '';
 
-      // 1. エース (A) - スペードは伝統的大判オーナメント
-      if (card.rank === 1) {
+      if (card.rank === 1) { // Ace
         if (card.suit === 'spade') {
           centerHTML = `
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none ${colorClass}">
@@ -417,25 +442,9 @@
             </div>
           `;
         }
-      }
-      // 2. 絵札 (J, Q, K) - トランプ伝統のダブルヘッド肖像アート
-      else if (card.rank >= 11) {
-        let badge = card.rank === 11 ? 'JACK' : (card.rank === 12 ? 'QUEEN' : 'KING');
-        let symbol = card.rank === 11 ? '⚔️' : (card.rank === 12 ? '👑' : '♚');
-        centerHTML = `
-          <div class="absolute inset-x-3 inset-y-2 flex flex-col items-center justify-between border border-slate-300 rounded pointer-events-none bg-slate-50/50 py-1 ${colorClass}">
-            <div class="text-[9px] font-bold font-card tracking-wider opacity-80">${badge}</div>
-            <div class="text-xl sm:text-2xl">${symbol}</div>
-            <div class="text-xs opacity-60">${icon}</div>
-            <div class="w-full border-t border-slate-300/80 my-0.5"></div>
-            <div class="text-xs opacity-60 rotate-180">${icon}</div>
-            <div class="text-xl sm:text-2xl rotate-180">${symbol}</div>
-            <div class="text-[9px] font-bold font-card tracking-wider opacity-80 rotate-180">${badge}</div>
-          </div>
-        `;
-      }
-      // 3. 数字札 (2〜10) - 実物のトランプと同じ正式なピップ配置
-      else {
+      } else if (card.rank >= 11) { // J, Q, K
+        centerHTML = getCourtCardPortrait(card.rank, card.suit, colorClass);
+      } else { // 2 〜 10
         let pips = '';
         const r = card.rank;
         const addPip = (col, row, rotate = false) => {
@@ -476,6 +485,9 @@
     function createCardElement(card, source, col, row) {
       const el = document.createElement('div');
       el.className = 'playing-card';
+      el.dataset.source = source;
+      el.dataset.col = col;
+      el.dataset.row = row;
 
       if (!card.faceUp) {
         el.classList.add('card-back');
@@ -489,16 +501,11 @@
         return el;
       }
 
-      el.classList.add('card-front');
+      el.classList.add('card-front', 'can-drag');
       el.innerHTML = renderCardInner(card);
 
-      // ドラッグ属性
-      el.draggable = true;
-      el.ondragstart = (e) => handleDragStart(e, source, col, row);
-
-      // タップ・ダブルクリックで自動移動
-      el.ondblclick = () => tryAutoMove(card, source, col, row);
-      el.onclick = () => tryAutoMove(card, source, col, row);
+      // ポインタードラッグ初期化
+      el.addEventListener('pointerdown', (e) => startPointerDrag(e, card, source, col, row));
 
       return el;
     }
@@ -549,7 +556,7 @@
         }
       });
 
-      // 4. Tableaus (重なり段差)
+      // 4. Tableaus
       tableaus.forEach((t, tIdx) => {
         const tSlot = document.getElementById(`tableau-${tIdx}`);
         tSlot.innerHTML = '';
@@ -565,69 +572,124 @@
       checkAutoComplete();
     }
 
-    // ドラッグ＆ドロップ
-    let draggedData = null;
+    // -------------------------------------------------------------
+    // 高信頼性ポインタードラッグシステム（マウス＆タッチ完全連動）
+    // -------------------------------------------------------------
+    let activeDrag = null;
 
-    function handleDragStart(e, source, col, row) {
-      if (isAutoCompleting) return;
-      draggedData = { source, col, row };
-      e.dataTransfer.setData('text/plain', JSON.stringify({ source, col, row }));
-    }
+    function startPointerDrag(e, card, source, col, row) {
+      if (isAutoCompleting || e.button === 2) return;
 
-    function allowDrop(e) {
-      e.preventDefault();
-    }
+      const cardElem = e.currentTarget;
+      const rect = cardElem.getBoundingClientRect();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const offsetX = startX - rect.left;
+      const offsetY = startY - rect.top;
 
-    function handleDrop(e, targetType, targetCol) {
-      e.preventDefault();
-      if (!draggedData || isAutoCompleting) return;
-
-      const { source, col, row } = draggedData;
       let movingCards = [];
+      let movingElements = [];
 
       if (source === 'waste') {
         movingCards = [waste[waste.length - 1]];
+        movingElements = [cardElem];
       } else if (source === 'tableau') {
         movingCards = tableaus[col].slice(row);
+        const parent = cardElem.parentElement;
+        const allChildren = Array.from(parent.children);
+        movingElements = allChildren.slice(row);
       } else if (source === 'foundation') {
         movingCards = [foundations[col][foundations[col].length - 1]];
+        movingElements = [cardElem];
       }
 
-      if (movingCards.length === 0) return;
+      let isDragging = false;
 
-      const baseCard = movingCards[0];
+      function onPointerMove(moveEvent) {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
 
-      if (targetType === 'foundation') {
-        if (movingCards.length === 1 && canPlaceOnFoundation(baseCard, targetCol)) {
-          saveState();
-          executeMove(source, col, row, 'foundation', targetCol, movingCards);
-          score += 10;
-          playSound('foundation');
-          render();
+        if (!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+          isDragging = true;
+          activeDrag = { source, col, row, movingCards };
+          movingElements.forEach((el, idx) => {
+            el.classList.add('dragging');
+            el.style.zIndex = String(9000 + idx);
+            el.style.pointerEvents = 'none'; // 下のドロップ先スロットを拾えるようにする
+          });
         }
-      } else if (targetType === 'tableau') {
-        if (canPlaceOnTableau(baseCard, targetCol)) {
-          saveState();
-          executeMove(source, col, row, 'tableau', targetCol, movingCards);
-          score += 5;
-          playSound('place');
-          render();
+
+        if (isDragging) {
+          const baseLeft = moveEvent.clientX - offsetX;
+          const baseTop = moveEvent.clientY - offsetY;
+          movingElements.forEach((el, idx) => {
+            el.style.position = 'fixed';
+            el.style.left = `${baseLeft}px`;
+            el.style.top = `${baseTop + idx * 26}px`;
+            el.style.width = `${rect.width}px`;
+            el.style.height = `${rect.height}px`;
+          });
         }
       }
-      draggedData = null;
+
+      function onPointerUp(upEvent) {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+
+        if (isDragging) {
+          // ドロップ先判定
+          const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+          let handled = false;
+
+          if (dropTarget) {
+            const slot = dropTarget.closest('.card-slot');
+            if (slot) {
+              const slotId = slot.id;
+              if (slotId.startsWith('foundation-')) {
+                const targetFIdx = parseInt(slotId.replace('foundation-', ''), 10);
+                if (movingCards.length === 1 && canPlaceOnFoundation(movingCards[0], targetFIdx)) {
+                  saveState();
+                  executeMove(source, col, row, 'foundation', targetFIdx, movingCards);
+                  score += 10;
+                  playSound('foundation');
+                  handled = true;
+                }
+              } else if (slotId.startsWith('tableau-')) {
+                const targetTIdx = parseInt(slotId.replace('tableau-', ''), 10);
+                if (canPlaceOnTableau(movingCards[0], targetTIdx)) {
+                  saveState();
+                  executeMove(source, col, row, 'tableau', targetTIdx, movingCards);
+                  score += 5;
+                  playSound('place');
+                  handled = true;
+                }
+              }
+            }
+          }
+
+          activeDrag = null;
+          render(); // 元の位置、または移動後の位置へ再描画
+        } else {
+          // ドラッグせずクリック（タップ）で離した場合は自動移動を試行
+          tryAutoMove(card, source, col, row);
+        }
+      }
+
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
     }
 
     function canPlaceOnFoundation(card, fIdx) {
       const f = foundations[fIdx];
       const targetSuit = SUITS[fIdx];
       if (card.suit !== targetSuit) return false;
-      if (f.length === 0) return card.rank === 1; // Aのみ
+      if (f.length === 0) return card.rank === 1;
       return card.rank === f[f.length - 1].rank + 1;
     }
 
     function canPlaceOnTableau(card, tIdx) {
       const t = tableaus[tIdx];
-      if (t.length === 0) return card.rank === 13; // 空き列はKのみ
+      if (t.length === 0) return card.rank === 13;
       const top = t[t.length - 1];
       if (!top.faceUp) return false;
       return card.color !== top.color && card.rank === top.rank - 1;
@@ -655,7 +717,6 @@
     function tryAutoMove(card, source, col, row) {
       if (!card.faceUp || isAutoCompleting) return;
 
-      // 1. 組札へ移動可能か
       for (let fIdx = 0; fIdx < 4; fIdx++) {
         if (canPlaceOnFoundation(card, fIdx)) {
           saveState();
@@ -670,7 +731,6 @@
         }
       }
 
-      // 2. 場札へ移動可能か
       if (source !== 'tableau' || row === tableaus[col].length - 1) {
         for (let tIdx = 0; tIdx < 7; tIdx++) {
           if (source === 'tableau' && col === tIdx) continue;
@@ -687,11 +747,9 @@
       }
     }
 
-    // スマートヒント機能（動かす元＝黄色、移動先＝水色）
     function showHint() {
       clearHints();
 
-      // 1. 組札に送れるカード
       for (let i = 0; i < 7; i++) {
         if (tableaus[i].length > 0) {
           const top = tableaus[i][tableaus[i].length - 1];
@@ -714,7 +772,6 @@
         }
       }
 
-      // 2. 裏向きカードを開けられる場札移動
       for (let i = 0; i < 7; i++) {
         for (let r = 0; r < tableaus[i].length; r++) {
           const card = tableaus[i][r];
@@ -732,7 +789,6 @@
         }
       }
 
-      // 3. 捨て札からの場札展開
       if (waste.length > 0) {
         const top = waste[waste.length - 1];
         for (let j = 0; j < 7; j++) {
@@ -744,7 +800,6 @@
         }
       }
 
-      // 4. 山札
       if (stock.length > 0 || waste.length > 0) {
         highlightHint('#stock-slot', null);
       }
@@ -782,7 +837,6 @@
       render();
     }
 
-    // オートコンプリート（全カード表向きで自動回収）
     function checkAutoComplete() {
       const totalInFoundation = foundations.reduce((acc, f) => acc + f.length, 0);
       if (totalInFoundation === 52) {
