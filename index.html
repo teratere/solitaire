@@ -97,6 +97,7 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
+  <!-- Header -->
   <header class="bg-black/35 backdrop-blur-md border-b border-white/10 px-4 py-2.5 sticky top-0 z-40">
     <div class="max-w-4xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -118,6 +119,7 @@
     </div>
   </header>
 
+  <!-- Controls Bar -->
   <div class="max-w-4xl mx-auto w-full px-3 py-2 flex items-center justify-between gap-2 text-xs">
     <div class="flex gap-2">
       <button onclick="newGame()" class="bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5 shadow-sm">
@@ -137,6 +139,7 @@
     </div>
   </div>
 
+  <!-- Game Board -->
   <main class="max-w-4xl mx-auto w-full px-2 sm:px-4 py-3 flex-1 flex flex-col justify-start">
     <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-6">
       <div id="stock-slot" onclick="drawStock()" class="card-slot flex items-center justify-center cursor-pointer hover:border-white/40 transition">
@@ -169,6 +172,7 @@
     </div>
   </main>
 
+  <!-- Clear Modal -->
   <div id="win-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4">
     <div class="bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl relative">
       <div class="w-16 h-16 rounded-2xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-3xl mx-auto mb-4 border border-amber-400/30">
@@ -186,7 +190,13 @@
     </div>
   </div>
 
-  <footer class="py-3 text-center text-[11px] text-white/40">
+  <!-- カード画像クレジット（フッター直上） -->
+  <div class="text-center text-[10px] text-white/40 pb-2">
+    Card graphics: Open source SVG Playing Cards (Public Domain / LGPL)
+  </div>
+
+  <!-- フッター（Apps Hub 正式共通規格: コピーライトなし） -->
+  <footer class="py-3 text-center text-[11px] text-white/40 border-t border-white/10">
     ※個人開発プロトタイプにつき無保証・自己責任にてご利用ください（Apps Hub）
   </footer>
 
@@ -251,7 +261,7 @@
       } catch (e) {}
     }
 
-    // ダウンロードされたファイル名形式（例: 10_of_spades.svg, ace_of_hearts.svg）
+    // ローカルSVGファイルの読み込み（例: ./cards/10_of_spades.svg, ./cards/ace_of_hearts.svg）
     function getCardSvgPath(card) {
       const rankPart = RANK_NAMES[card.rank] || card.rank;
       return `./cards/${rankPart}_of_${card.suit}.svg`;
@@ -420,9 +430,7 @@
       checkAutoComplete();
     }
 
-    // -------------------------------------------------------------
     // ドラッグ＆ドロップエンジン
-    // -------------------------------------------------------------
     function startPointerDrag(e, card, source, col, row) {
       if (isAutoCompleting || e.button === 2) return;
 
