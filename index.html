@@ -3,282 +3,408 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Klondike Solitaire</title>
+  <title>ソリティア | Apps Hub</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Font Awesome (Apps Hub 統一アイコン) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti (クリア演出) -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
+    /* 基本フォントとタッチ操作最適化 */
     body {
-      background-color: #0f3d24;
-      background-image: radial-gradient(circle at 50% 30%, #165330 0%, #0d331e 75%, #082414 100%);
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       cursor: default !important;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* WebKit / Safari でポインタが消失しない安全な標準カーソル定義 */
     button, a, .clickable {
       cursor: pointer !important;
     }
 
-    .card-slot {
-      aspect-ratio: 2.5 / 3.5;
-      border-radius: 8px;
-      border: 2px dashed rgba(255, 255, 255, 0.2);
-      position: relative;
-      background: rgba(0, 0, 0, 0.15);
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-    }
-
-    .playing-card {
-      aspect-ratio: 2.5 / 3.5;
-      border-radius: 6px;
-      position: absolute;
-      width: 100%;
-      top: 0;
-      left: 0;
-      transition: box-shadow 0.15s ease;
-      cursor: pointer !important;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0,0,0,0.2);
+    .card-draggable {
+      cursor: grab !important;
       touch-action: none;
     }
 
-    .playing-card.can-drag {
-      cursor: grab !important;
-    }
-    .playing-card.dragging {
+    .card-draggable:active,
+    .is-dragging {
       cursor: grabbing !important;
-      opacity: 0.95;
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6) !important;
-      z-index: 9999 !important;
     }
 
-    .card-front {
-      background: #ffffff;
-      border: 1px solid #dcdad5;
-      overflow: hidden;
+    /* ポーカーサイズ比率 (2.5 : 3.5) のカード基本設計 */
+    .playing-card {
+      aspect-ratio: 2.5 / 3.5;
+      border-radius: 0.6rem;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: box-shadow 0.15s ease, transform 0.12s ease;
     }
 
-    .card-back {
-      background: #1e3a8a;
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      overflow: hidden;
-      cursor: default !important;
+    @media (min-width: 640px) {
+      .playing-card {
+        border-radius: 0.75rem;
+      }
     }
+
+    /* カード裏面：ネイビーの格子模様＋Apps Hubキューブ */
     .card-back-pattern {
-      width: 100%;
-      height: 100%;
-      background-image: 
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px),
-        repeating-linear-gradient(-45deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background-color: #1e3a8a;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 2px, transparent 2px, transparent 8px);
     }
 
-    .hint-source {
-      box-shadow: 0 0 0 3px #facc15, 0 0 18px rgba(250, 204, 21, 0.8) !important;
-      z-index: 50 !important;
+    /* ヒント強調アニメーション */
+    @keyframes hintPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px #f59e0b, 0 8px 20px -4px rgba(245, 158, 11, 0.55);
+        transform: translateY(-2px);
+      }
+      50% {
+        box-shadow: 0 0 0 5px #fbbf24, 0 12px 24px -4px rgba(245, 158, 11, 0.75);
+        transform: translateY(-4px);
+      }
     }
-    .hint-target {
-      box-shadow: 0 0 0 3px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.8) !important;
-      z-index: 50 !important;
+
+    .hint-highlight {
+      animation: hintPulse 0.9s ease-in-out infinite;
+      z-index: 40 !important;
+    }
+
+    /* ドラッグ中の浮遊レイヤー */
+    #drag-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 9999;
     }
   </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col justify-between selection:bg-indigo-100">
 
-  <!-- Header -->
-  <header class="bg-black/35 backdrop-blur-md border-b border-white/10 px-4 py-2.5 sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <a href="../" class="text-xs font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
-          <i class="fa-solid fa-arrow-left"></i> Apps Hub
+  <!-- Apps Hub 統一ヘッダー -->
+  <header class="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+      <!-- 左側：戻りリンク & タイトル -->
+      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <a href="../" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded-lg transition shrink-0">
+          <i class="fa-solid fa-arrow-left text-[11px]"></i>
+          <span>Apps Hub</span>
         </a>
-        <h1 class="text-sm font-bold text-white flex items-center gap-1.5 tracking-wider">
-          <i class="fa-solid fa-clone text-rose-400"></i> ソリティア
-        </h1>
+        <div class="flex items-center gap-2 truncate">
+          <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-sm shrink-0 border border-rose-100">
+            <i class="fa-solid fa-clone"></i>
+          </div>
+          <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-slate-800 truncate">ソリティア</h1>
+        </div>
       </div>
-      <div class="flex items-center gap-3 text-xs font-mono">
-        <div class="bg-black/40 px-3 py-1 rounded-md border border-white/10 shadow-inner">
-          <span class="text-white/60">TIME:</span> <span id="time-display" class="font-bold text-white">00:00</span>
+
+      <!-- 右側：計器（タイム・手数・スコア） & 音声切替 -->
+      <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div class="flex items-center gap-2 sm:gap-2.5 bg-slate-50 border border-slate-200/80 px-2.5 sm:px-3 py-1 rounded-xl text-xs">
+          <div class="flex items-center gap-1 text-slate-600">
+            <i class="fa-regular fa-clock text-slate-400"></i>
+            <span id="timer-display" class="font-mono-num font-bold text-slate-800">00:00</span>
+          </div>
+          <span class="text-slate-300">|</span>
+          <div class="flex items-center gap-1 text-slate-600">
+            <span class="text-[11px] text-slate-400 hidden sm:inline">手数</span>
+            <span id="moves-display" class="font-mono-num font-bold text-slate-800">0</span>
+          </div>
+          <span class="text-slate-300 hidden xs:inline">|</span>
+          <div class="hidden xs:flex items-center gap-1 text-slate-600">
+            <span class="text-[11px] text-slate-400 hidden sm:inline">点</span>
+            <span id="score-display" class="font-mono-num font-bold text-amber-600">0</span>
+          </div>
         </div>
-        <div class="bg-black/40 px-3 py-1 rounded-md border border-white/10 shadow-inner">
-          <span class="text-white/60">SCORE:</span> <span id="score-display" class="font-bold text-amber-300">0</span>
-        </div>
+
+        <button id="sound-toggle" type="button" aria-label="サウンド切替"
+          class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+          <i id="sound-icon" class="fa-solid fa-volume-high text-xs"></i>
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- Controls Bar -->
-  <div class="max-w-4xl mx-auto w-full px-3 py-2 flex items-center justify-between gap-2 text-xs">
-    <div class="flex gap-2">
-      <button onclick="newGame()" class="bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-rotate-right"></i> 配り直す
-      </button>
-      <button onclick="showHint()" class="bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5 shadow-sm">
-        <i class="fa-regular fa-lightbulb text-amber-300"></i> ヒント
-      </button>
-      <button onclick="undoMove()" id="btn-undo" disabled class="bg-white/10 text-white/40 font-bold px-3 py-1.5 rounded-lg border border-white/10 transition flex items-center gap-1.5 disabled:opacity-40">
-        <i class="fa-solid fa-arrow-rotate-left"></i> 待った
-      </button>
-    </div>
-    <div class="flex items-center gap-2">
-      <button onclick="toggleSound()" id="sound-btn" class="bg-white/15 hover:bg-white/25 text-white font-bold p-1.5 px-2.5 rounded-lg border border-white/20 transition">
-        <i id="sound-icon" class="fa-solid fa-volume-high"></i>
-      </button>
-    </div>
-  </div>
+  <!-- メインゲームエリア -->
+  <main class="flex-1 w-full max-w-4xl mx-auto px-2 sm:px-5 py-3 sm:py-5 flex flex-col">
 
-  <!-- Game Board -->
-  <main class="max-w-4xl mx-auto w-full px-2 sm:px-4 py-3 flex-1 flex flex-col justify-start">
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-6">
-      <div id="stock-slot" onclick="drawStock()" class="card-slot flex items-center justify-center cursor-pointer hover:border-white/40 transition">
-        <i class="fa-solid fa-rotate-left text-white/30 text-xl"></i>
+    <!-- 操作コントロールバー -->
+    <div class="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-new-game" type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-xs transition">
+          <i class="fa-solid fa-rotate-right text-xs"></i>
+          <span>配り直す</span>
+        </button>
+
+        <button id="btn-undo" type="button" disabled
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-slate-700 border border-slate-200 text-xs sm:text-sm font-bold shadow-xs transition">
+          <i class="fa-solid fa-reply text-xs"></i>
+          <span>待った</span>
+        </button>
+
+        <button id="btn-hint" type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-200/80 text-xs sm:text-sm font-bold shadow-xs transition">
+          <i class="fa-regular fa-lightbulb text-xs text-amber-600"></i>
+          <span>ヒント</span>
+        </button>
       </div>
-      <div id="waste-slot" class="card-slot"></div>
-      <div class="pointer-events-none"></div>
-      <div id="foundation-0" class="card-slot flex items-center justify-center">
-        <span class="text-white/20 text-3xl font-bold">♠</span>
-      </div>
-      <div id="foundation-1" class="card-slot flex items-center justify-center">
-        <span class="text-rose-400/25 text-3xl font-bold">♥</span>
-      </div>
-      <div id="foundation-2" class="card-slot flex items-center justify-center">
-        <span class="text-rose-400/25 text-3xl font-bold">♦</span>
-      </div>
-      <div id="foundation-3" class="card-slot flex items-center justify-center">
-        <span class="text-white/20 text-3xl font-bold">♣</span>
+
+      <!-- ステータスメッセージ / オート回収インジケータ -->
+      <div id="status-badge" class="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+        タップで自動移動 / ドラッグで配置
       </div>
     </div>
 
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 flex-1 min-h-[440px]">
-      <div id="tableau-0" class="card-slot"></div>
-      <div id="tableau-1" class="card-slot"></div>
-      <div id="tableau-2" class="card-slot"></div>
-      <div id="tableau-3" class="card-slot"></div>
-      <div id="tableau-4" class="card-slot"></div>
-      <div id="tableau-5" class="card-slot"></div>
-      <div id="tableau-6" class="card-slot"></div>
+    <!-- ソリティア盤面コンテナ -->
+    <div id="board-area" class="relative flex-1 bg-emerald-800/95 rounded-2xl p-2 sm:p-4 shadow-inner border border-emerald-900/40 flex flex-col select-none">
+
+      <!-- 手詰まり通知バナー（盤面中央上部に視認性の高いトースト表示） -->
+      <div id="deadlock-toast" role="status" aria-live="polite"
+        class="hidden absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-sm bg-slate-900/95 text-white border border-amber-400/60 shadow-2xl rounded-2xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur-md transition-all duration-300 cursor-pointer">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xs sm:text-sm font-extrabold text-amber-300 leading-tight">打てる手がありません</div>
+            <div class="text-[11px] text-slate-300 truncate mt-0.5">手詰まりです。「待った」か「配り直す」をお試しください</div>
+          </div>
+        </div>
+        <button id="deadlock-toast-close" type="button" aria-label="閉じる"
+          class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center shrink-0 transition">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- 上段：山札(Stock)・捨て札(Waste) ＆ 4つの組札(Foundations) -->
+      <div class="grid grid-cols-7 gap-1.5 sm:gap-3 mb-3 sm:mb-5">
+        <!-- 1列目：山札 (Stock) -->
+        <div id="stock-slot" class="playing-card relative rounded-xl border-2 border-dashed border-emerald-500/40 bg-emerald-900/40 flex items-center justify-center clickable">
+          <i class="fa-solid fa-rotate-right text-emerald-300/60 text-lg sm:text-2xl"></i>
+        </div>
+
+        <!-- 2列目：捨て札 (Waste) ※常に一番上の最新1枚のみを描画・操作可能とする -->
+        <div id="waste-slot" class="playing-card relative rounded-xl border border-emerald-600/30 bg-emerald-900/20"></div>
+
+        <!-- 3列目：スペーサー -->
+        <div class="playing-card pointer-events-none"></div>
+
+        <!-- 4〜7列目：組札 4スート (♠ ♥ ♦ ♣) -->
+        <div id="foundation-0" data-foundation="0" data-suit="spades"
+          class="foundation-slot playing-card relative rounded-xl border-2 border-emerald-500/35 bg-emerald-900/35 flex items-center justify-center">
+          <span class="text-emerald-400/40 text-xl sm:text-3xl font-bold pointer-events-none">♠</span>
+        </div>
+
+        <div id="foundation-1" data-foundation="1" data-suit="hearts"
+          class="foundation-slot playing-card relative rounded-xl border-2 border-emerald-500/35 bg-emerald-900/35 flex items-center justify-center">
+          <span class="text-emerald-400/40 text-xl sm:text-3xl font-bold pointer-events-none">♥</span>
+        </div>
+
+        <div id="foundation-2" data-foundation="2" data-suit="diamonds"
+          class="foundation-slot playing-card relative rounded-xl border-2 border-emerald-500/35 bg-emerald-900/35 flex items-center justify-center">
+          <span class="text-emerald-400/40 text-xl sm:text-3xl font-bold pointer-events-none">♦</span>
+        </div>
+
+        <div id="foundation-3" data-foundation="3" data-suit="clubs"
+          class="foundation-slot playing-card relative rounded-xl border-2 border-emerald-500/35 bg-emerald-900/35 flex items-center justify-center">
+          <span class="text-emerald-400/40 text-xl sm:text-3xl font-bold pointer-events-none">♣</span>
+        </div>
+      </div>
+
+      <!-- 下段：7列の場札 (Tableau) -->
+      <div id="tableau-grid" class="grid grid-cols-7 gap-1.5 sm:gap-3 flex-1 min-h-[340px] sm:min-h-[430px] items-start">
+        <div id="tableau-0" data-col="0" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-1" data-col="1" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-2" data-col="2" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-3" data-col="3" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-4" data-col="4" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-5" data-col="5" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+        <div id="tableau-6" data-col="6" class="tableau-col relative w-full min-h-[120px] rounded-xl border border-emerald-500/20 bg-emerald-900/20"></div>
+      </div>
     </div>
   </main>
 
-  <!-- Clear Modal -->
-  <div id="win-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4">
-    <div class="bg-slate-900 border border-slate-700 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl relative">
-      <div class="w-16 h-16 rounded-2xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-3xl mx-auto mb-4 border border-amber-400/30">
+  <!-- ドラッグ追従用レイヤー -->
+  <div id="drag-layer"></div>
+
+  <!-- クリア祝福モーダル -->
+  <div id="victory-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 text-center shadow-2xl transform transition-all">
+      <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 border border-amber-200 flex items-center justify-center text-2xl mx-auto mb-3">
         <i class="fa-solid fa-trophy"></i>
       </div>
-      <h2 class="text-2xl font-black text-white mb-1">CONGRATULATIONS!</h2>
-      <p class="text-sm text-slate-400 mb-6">見事にクロンダイクをクリアしました！</p>
-      <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/60 mb-6 text-xs flex justify-around font-mono">
-        <div><span class="text-slate-400">TIME:</span> <span id="win-time" class="font-bold text-white">00:00</span></div>
-        <div><span class="text-slate-400">SCORE:</span> <span id="win-score" class="font-bold text-amber-300">0</span></div>
+      <h2 class="text-xl font-extrabold text-slate-900 mb-1">クリアおめでとうございます！</h2>
+      <p class="text-xs text-slate-500 mb-5">すべてのカードを組札に揃えました</p>
+
+      <div class="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl p-3 border border-slate-200/80 mb-5">
+        <div>
+          <div class="text-[11px] font-semibold text-slate-400">クリアタイム</div>
+          <div id="modal-time" class="font-mono-num text-base font-extrabold text-slate-800">00:00</div>
+        </div>
+        <div>
+          <div class="text-[11px] font-semibold text-slate-400">総手数</div>
+          <div id="modal-moves" class="font-mono-num text-base font-extrabold text-slate-800">0</div>
+        </div>
+        <div>
+          <div class="text-[11px] font-semibold text-slate-400">スコア</div>
+          <div id="modal-score" class="font-mono-num text-base font-extrabold text-amber-600">0</div>
+        </div>
       </div>
-      <button onclick="newGame()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white shadow-lg transition active:scale-95">
-        もう一度遊ぶ
+
+      <button id="modal-new-game" type="button"
+        class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-bold text-sm shadow-sm transition">
+        もう一度あそぶ
       </button>
     </div>
   </div>
 
-  <!-- カード画像クレジット（フッター直上） -->
-  <div class="text-center text-[10px] text-white/40 pb-2">
-    Card graphics: Open source SVG Playing Cards (Public Domain / LGPL)
-  </div>
-
-  <!-- フッター（Apps Hub 正式共通規格: コピーライトなし） -->
-  <footer class="py-3 text-center text-[11px] text-white/40 border-t border-white/10">
-    ※個人開発プロトタイプにつき無保証・自己責任にてご利用ください（Apps Hub）
+  <!-- Apps Hub 統一フッター -->
+  <footer class="py-4 px-4 text-center text-[11px] text-slate-400">
+    <p>※個人開発プロトタイプにつき無保証・自己責任にてご利用ください（Apps Hub）</p>
   </footer>
 
   <script>
-    const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'];
-    const SUIT_COLORS = { spades: 'black', hearts: 'red', diamonds: 'red', clubs: 'black' };
-    const RANK_NAMES = { 1: 'ace', 11: 'jack', 12: 'queen', 13: 'king' };
+    /**
+     * クロンダイク・ソリティア (Apps Hub Edition)
+     * - 捨て札 (Waste) の厳格な単一カード制御
+     * - カード表面: 左上（左肩）＆ 右下（180度反転）に対角インデックス＋中央大型マーク＆数字
+     * - カード裏面: ネイビーの格子模様＋Apps Hubキューブアイコン (fa-cube)
+     */
 
-    let stock = [];
-    let waste = [];
-    let foundations = [[], [], [], []];
-    let tableaus = [[], [], [], [], [], [], []];
-    let moveHistory = [];
+    // --- スートとランク定義 ---
+    const SUITS = [
+      { id: 'spades',   symbol: '♠', color: 'black', foundationIdx: 0 },
+      { id: 'hearts',   symbol: '♥', color: 'red',   foundationIdx: 1 },
+      { id: 'diamonds', symbol: '♦', color: 'red',   foundationIdx: 2 },
+      { id: 'clubs',    symbol: '♣', color: 'black', foundationIdx: 3 }
+    ];
 
-    let score = 0;
-    let timerSeconds = 0;
+    const RANK_LABELS = {
+      1: 'A', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
+      8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K'
+    };
+
+    // --- ゲーム状態 ---
+    let state = {
+      stock: [],
+      waste: [],
+      foundations: [[], [], [], []],
+      tableau: [[], [], [], [], [], [], []],
+      moves: 0,
+      score: 0,
+      seconds: 0,
+      timerStarted: false,
+      isAutoCompleting: false,
+      isWon: false
+    };
+
+    let historyStack = [];
     let timerInterval = null;
     let soundEnabled = true;
-    let isAutoCompleting = false;
-
-    // Web Audio Synthesizer
     let audioCtx = null;
-    function getAudioCtx() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      return audioCtx;
+
+    // --- Web Audio API 効果音エンジン ---
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          audioCtx = new AudioContext();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
     }
 
     function playSound(type) {
       if (!soundEnabled) return;
       try {
-        const actx = getAudioCtx();
-        const now = actx.currentTime;
-        const osc = actx.createOscillator();
-        const gain = actx.createGain();
+        initAudio();
+        if (!audioCtx) return;
 
-        if (type === 'deal') {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'flip') {
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(450, now);
-          osc.frequency.exponentialRampToValueAtTime(160, now + 0.05);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-          osc.connect(gain); gain.connect(actx.destination);
-          osc.start(now); osc.stop(now + 0.05);
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.055);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
         } else if (type === 'place') {
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(520, now);
-          osc.frequency.exponentialRampToValueAtTime(260, now + 0.07);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-          osc.connect(gain); gain.connect(actx.destination);
-          osc.start(now); osc.stop(now + 0.07);
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.exponentialRampToValueAtTime(160, now + 0.07);
+          gain.gain.setValueAtTime(0.11, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+          osc.start(now);
+          osc.stop(now + 0.075);
         } else if (type === 'foundation') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(587, now);
-          osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-          osc.connect(gain); gain.connect(actx.destination);
-          osc.start(now); osc.stop(now + 0.12);
-        }
-      } catch (e) {}
-    }
-
-    // ローカルSVGファイルの読み込み（例: ./cards/10_of_spades.svg, ./cards/ace_of_hearts.svg）
-    function getCardSvgPath(card) {
-      const rankPart = RANK_NAMES[card.rank] || card.rank;
-      return `./cards/${rankPart}_of_${card.suit}.svg`;
-    }
-
-    function createDeck() {
-      const deck = [];
-      SUITS.forEach(suit => {
-        for (let r = 1; r <= 13; r++) {
-          deck.push({
-            suit: suit,
-            rank: r,
-            faceUp: false,
-            color: SUIT_COLORS[suit]
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.setValueAtTime(880, now + 0.06);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } else if (type === 'win') {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'triangle';
+            o.frequency.setValueAtTime(freq, now + idx * 0.09);
+            g.gain.setValueAtTime(0.12, now + idx * 0.09);
+            g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.45);
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start(now + idx * 0.09);
+            o.stop(now + idx * 0.09 + 0.45);
           });
         }
-      });
+      } catch (e) {
+        // 音声再生エラーは無視
+      }
+    }
+
+    // --- デッキ生成・初期化 ---
+    function createShuffledDeck() {
+      const deck = [];
+      for (const suit of SUITS) {
+        for (let rank = 1; rank <= 13; rank++) {
+          deck.push({
+            id: `${suit.id}-${rank}`,
+            suit: suit.id,
+            symbol: suit.symbol,
+            color: suit.color,
+            foundationIdx: suit.foundationIdx,
+            rank: rank,
+            label: RANK_LABELS[rank],
+            faceUp: false
+          });
+        }
+      }
       for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -286,463 +412,807 @@
       return deck;
     }
 
-    function newGame() {
+    function startNewGame() {
       clearInterval(timerInterval);
-      timerSeconds = 0;
-      score = 0;
-      moveHistory = [];
-      isAutoCompleting = false;
-      document.getElementById('win-modal').classList.add('hidden');
-      document.getElementById('btn-undo').disabled = true;
+      timerInterval = null;
+      historyStack = [];
 
-      const deck = createDeck();
-      stock = [];
-      waste = [];
-      foundations = [[], [], [], []];
-      tableaus = [[], [], [], [], [], [], []];
+      const deck = createShuffledDeck();
+      const tableau = [[], [], [], [], [], [], []];
 
-      for (let i = 0; i < 7; i++) {
-        for (let j = 0; j <= i; j++) {
+      for (let col = 0; col < 7; col++) {
+        for (let row = 0; row <= col; row++) {
           const card = deck.pop();
-          if (j === i) card.faceUp = true;
-          tableaus[i].push(card);
+          card.faceUp = (row === col);
+          tableau[col].push(card);
         }
       }
 
-      stock = deck;
+      state = {
+        stock: deck,
+        waste: [],
+        foundations: [[], [], [], []],
+        tableau: tableau,
+        moves: 0,
+        score: 0,
+        seconds: 0,
+        timerStarted: false,
+        isAutoCompleting: false,
+        isWon: false
+      };
 
+      document.getElementById('victory-modal').classList.add('hidden');
+      document.getElementById('victory-modal').classList.remove('flex');
+      hideDeadlockToast();
+      document.getElementById('status-badge').textContent = 'タップで自動移動 / ドラッグで配置';
+      document.getElementById('status-badge').className = 'text-[11px] sm:text-xs font-semibold text-slate-500 truncate';
+      updateHUD();
+      renderBoard();
+    }
+
+    // --- タイマー管理 ---
+    function ensureTimerRunning() {
+      if (state.timerStarted || state.isWon) return;
+      state.timerStarted = true;
       timerInterval = setInterval(() => {
-        timerSeconds++;
-        const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
-        const s = String(timerSeconds % 60).padStart(2, '0');
-        document.getElementById('time-display').innerText = `${m}:${s}`;
+        if (!state.isWon) {
+          state.seconds++;
+          updateHUD();
+        }
       }, 1000);
-
-      playSound('deal');
-      render();
     }
 
-    function drawStock() {
-      if (isAutoCompleting) return;
-      if (stock.length > 0) {
-        saveState();
-        const card = stock.pop();
-        card.faceUp = true;
-        waste.push(card);
-        playSound('deal');
-      } else if (waste.length > 0) {
-        saveState();
-        stock = waste.reverse().map(c => { c.faceUp = false; return c; });
-        waste = [];
-        playSound('deal');
-      }
-      render();
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
     }
 
-    function createCardElement(card, source, col, row) {
+    function updateHUD() {
+      document.getElementById('timer-display').textContent = formatTime(state.seconds);
+      document.getElementById('moves-display').textContent = state.moves;
+      document.getElementById('score-display').textContent = state.score;
+      document.getElementById('btn-undo').disabled = (historyStack.length === 0 || state.isAutoCompleting || state.isWon);
+    }
+
+    // --- 履歴（アンドゥ）管理 ---
+    function saveSnapshot() {
+      const snapshot = JSON.stringify({
+        stock: state.stock,
+        waste: state.waste,
+        foundations: state.foundations,
+        tableau: state.tableau,
+        moves: state.moves,
+        score: state.score
+      });
+      historyStack.push(snapshot);
+      if (historyStack.length > 60) historyStack.shift();
+    }
+
+    function undoMove() {
+      if (historyStack.length === 0 || state.isAutoCompleting || state.isWon) return;
+      clearHints();
+      const prev = JSON.parse(historyStack.pop());
+      state.stock = prev.stock;
+      state.waste = prev.waste;
+      state.foundations = prev.foundations;
+      state.tableau = prev.tableau;
+      state.moves = prev.moves + 1;
+      state.score = Math.max(0, prev.score - 2);
+      playSound('flip');
+      updateHUD();
+      renderBoard();
+    }
+
+    // --- ルール判定ヘルパー ---
+    function canMoveToFoundation(card, foundationIdx) {
+      if (!card || card.foundationIdx !== foundationIdx) return false;
+      const pile = state.foundations[foundationIdx];
+      if (pile.length === 0) return card.rank === 1;
+      return card.rank === pile[pile.length - 1].rank + 1;
+    }
+
+    function canMoveToTableau(card, colIdx) {
+      if (!card) return false;
+      const col = state.tableau[colIdx];
+      if (col.length === 0) return card.rank === 13;
+      const topCard = col[col.length - 1];
+      if (!topCard.faceUp) return false;
+      return (card.color !== topCard.color) && (card.rank === topCard.rank - 1);
+    }
+
+    // --- カードDOM生成（ミニマル＆対角インデックスデザイン） ---
+    function createCardElement(card, source) {
       const el = document.createElement('div');
-      el.className = 'playing-card';
-      el.dataset.source = source;
-      el.dataset.col = col;
-      el.dataset.row = row;
+      el.dataset.cardId = card.id;
 
       if (!card.faceUp) {
-        el.classList.add('card-back');
+        // カード裏面：ネイビー格子模様＋Apps Hubキューブ
+        el.className = 'playing-card card-back-pattern border-2 border-white/80 shadow-sm flex items-center justify-center pointer-events-none';
         el.innerHTML = `
-          <div class="card-back-pattern">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-amber-300/40 bg-blue-950/80 flex items-center justify-center text-amber-300 text-xs sm:text-sm shadow-md">
-              <i class="fa-solid fa-cube"></i>
-            </div>
+          <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white/75 text-xs sm:text-sm">
+            <i class="fa-solid fa-cube"></i>
           </div>
         `;
         return el;
       }
 
-      el.classList.add('card-front', 'can-drag');
-      const svgSrc = getCardSvgPath(card);
+      // カード表面：赤 (#dc2626) または 黒 (#0f172a) の2色ミニマル構成
+      const textColor = card.color === 'red' ? '#dc2626' : '#0f172a';
+      el.style.color = textColor;
+      el.className = 'playing-card card-draggable bg-white border border-slate-300 shadow-sm flex flex-col justify-between overflow-hidden relative';
+
+      // 左上（左肩）＆ 右下（180度反転）に横並びインデックスを対角配置
+      // 中央エリアに大きめのマークと数字・文字をシンプルに配置
       el.innerHTML = `
-        <img src="${svgSrc}" alt="${card.rank}_${card.suit}" class="w-full h-full object-fill pointer-events-none" draggable="false">
+        <!-- 左上インデックスバー（横並び） -->
+        <div class="w-full px-1.5 sm:px-2 pt-1 sm:pt-1.5 flex items-center justify-start gap-0.5 sm:gap-1 leading-none pointer-events-none shrink-0">
+          <span class="text-[11px] sm:text-sm font-black tracking-tighter">${card.label}</span>
+          <span class="text-[11px] sm:text-sm leading-none">${card.symbol}</span>
+        </div>
+
+        <!-- メインエリア：大きめのマークと数字 -->
+        <div class="flex-1 flex flex-col items-center justify-center px-1 pointer-events-none">
+          <div class="text-lg sm:text-3xl md:text-4xl leading-none mb-0.5">
+            ${card.symbol}
+          </div>
+          <div class="text-base sm:text-2xl md:text-3xl font-black tracking-tighter leading-none">
+            ${card.label}
+          </div>
+        </div>
+
+        <!-- 右下インデックスバー（180度反転・横並び） -->
+        <div class="w-full px-1.5 sm:px-2 pb-1 sm:pb-1.5 flex items-center justify-start gap-0.5 sm:gap-1 leading-none rotate-180 pointer-events-none shrink-0">
+          <span class="text-[11px] sm:text-sm font-black tracking-tighter">${card.label}</span>
+          <span class="text-[11px] sm:text-sm leading-none">${card.symbol}</span>
+        </div>
       `;
 
-      el.addEventListener('pointerdown', (e) => startPointerDrag(e, card, source, col, row));
+      if (source) {
+        bindCardInteractions(el, source);
+      }
+
       return el;
     }
 
-    function render() {
-      document.getElementById('score-display').innerText = score;
-      document.getElementById('btn-undo').disabled = moveHistory.length === 0;
-
-      // 1. Stock
+    // --- 盤面全体レンダリング ---
+    function renderBoard() {
+      // 1. 山札 (Stock)
       const stockSlot = document.getElementById('stock-slot');
       stockSlot.innerHTML = '';
-      if (stock.length > 0) {
-        const topBack = document.createElement('div');
-        topBack.className = 'playing-card card-back';
-        topBack.innerHTML = `
-          <div class="card-back-pattern">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-amber-300/40 bg-blue-950/80 flex items-center justify-center text-amber-300 text-xs sm:text-sm shadow-md">
-              <i class="fa-solid fa-cube"></i>
-            </div>
-          </div>
+      if (state.stock.length > 0) {
+        const backEl = document.createElement('div');
+        backEl.className = 'w-full h-full card-back-pattern rounded-[0.5rem] sm:rounded-[0.65rem] border-2 border-white/80 shadow-sm flex flex-col items-center justify-center pointer-events-none';
+        backEl.innerHTML = `
+          <i class="fa-solid fa-cube text-white/75 text-sm sm:text-lg mb-0.5"></i>
+          <span class="font-mono-num text-[10px] sm:text-xs font-bold text-white/80">${state.stock.length}</span>
         `;
-        stockSlot.appendChild(topBack);
+        stockSlot.appendChild(backEl);
       } else {
-        stockSlot.innerHTML = '<i class="fa-solid fa-rotate-left text-white/30 text-xl"></i>';
+        stockSlot.innerHTML = `<i class="fa-solid fa-rotate-right text-emerald-300/60 text-lg sm:text-2xl pointer-events-none"></i>`;
       }
 
-      // 2. Waste
+      // 2. 捨て札 (Waste)
+      // 常に一番上の最新1枚（waste[waste.length - 1]）のみを描画し、途中の札が見えたり操作されたりするのを完全に防ぐ
       const wasteSlot = document.getElementById('waste-slot');
       wasteSlot.innerHTML = '';
-      if (waste.length > 0) {
-        const top = waste[waste.length - 1];
-        const cardElem = createCardElement(top, 'waste', 0, waste.length - 1);
-        wasteSlot.appendChild(cardElem);
+      if (state.waste.length > 0) {
+        const topIdx = state.waste.length - 1;
+        const topCard = state.waste[topIdx];
+        const cardEl = createCardElement(topCard, { type: 'waste', index: topIdx });
+        cardEl.classList.add('w-full', 'h-full');
+        wasteSlot.appendChild(cardEl);
       }
 
-      // 3. Foundations
-      foundations.forEach((f, idx) => {
-        const fSlot = document.getElementById(`foundation-${idx}`);
+      // 3. 組札 (Foundations)
+      const suitIcons = ['♠', '♥', '♦', '♣'];
+      for (let f = 0; f < 4; f++) {
+        const fSlot = document.getElementById(`foundation-${f}`);
         fSlot.innerHTML = '';
-        if (f.length > 0) {
-          const top = f[f.length - 1];
-          const cardElem = createCardElement(top, 'foundation', idx, f.length - 1);
-          fSlot.appendChild(cardElem);
+        const pile = state.foundations[f];
+        if (pile.length === 0) {
+          fSlot.innerHTML = `<span class="text-emerald-400/40 text-xl sm:text-3xl font-bold pointer-events-none">${suitIcons[f]}</span>`;
         } else {
-          const suitIcons = ['♠', '♥', '♦', '♣'];
-          const suitColor = (idx === 1 || idx === 2) ? 'text-rose-400/25' : 'text-white/20';
-          fSlot.innerHTML = `<span class="${suitColor} text-3xl font-bold">${suitIcons[idx]}</span>`;
+          const topIdx = pile.length - 1;
+          const topCard = pile[topIdx];
+          const cardEl = createCardElement(topCard, { type: 'foundation', foundationIdx: f, index: topIdx });
+          cardEl.classList.add('w-full', 'h-full');
+          fSlot.appendChild(cardEl);
         }
-      });
+      }
 
-      // 4. Tableaus
-      tableaus.forEach((t, tIdx) => {
-        const tSlot = document.getElementById(`tableau-${tIdx}`);
-        tSlot.innerHTML = '';
-        let currentOffset = 0;
-        t.forEach((card, cIdx) => {
-          const cardElem = createCardElement(card, 'tableau', tIdx, cIdx);
-          cardElem.style.top = `${currentOffset}px`;
-          tSlot.appendChild(cardElem);
-          currentOffset += card.faceUp ? 26 : 14;
+      // 4. 場札 (Tableau)
+      const isMobile = window.innerWidth < 640;
+      const faceDownOffset = isMobile ? 12 : 18;
+      const faceUpOffset = isMobile ? 22 : 30;
+
+      for (let c = 0; c < 7; c++) {
+        const colEl = document.getElementById(`tableau-${c}`);
+        colEl.innerHTML = '';
+        const cards = state.tableau[c];
+
+        let currentTop = 0;
+        cards.forEach((card, idx) => {
+          const cardEl = createCardElement(card, card.faceUp ? { type: 'tableau', col: c, index: idx } : null);
+          cardEl.style.position = 'absolute';
+          cardEl.style.top = `${currentTop}px`;
+          cardEl.style.left = '0';
+          cardEl.style.width = '100%';
+          cardEl.style.zIndex = idx + 1;
+          colEl.appendChild(cardEl);
+
+          if (idx < cards.length - 1) {
+            currentTop += card.faceUp ? faceUpOffset : faceDownOffset;
+          }
         });
+
+        const baseCardHeight = colEl.clientWidth > 0 ? (colEl.clientWidth * 1.4) : (isMobile ? 76 : 130);
+        colEl.style.minHeight = `${Math.max(isMobile ? 140 : 200, currentTop + baseCardHeight + 12)}px`;
+      }
+    }
+
+    // --- 山札からめくる / リサイクル ---
+    function drawFromStock() {
+      if (state.isAutoCompleting || state.isWon) return;
+      clearHints();
+      ensureTimerRunning();
+
+      if (state.stock.length > 0) {
+        saveSnapshot();
+        const card = state.stock.pop();
+        card.faceUp = true;
+        state.waste.push(card);
+        state.moves++;
+        playSound('flip');
+        updateHUD();
+        renderBoard();
+      } else if (state.waste.length > 0) {
+        saveSnapshot();
+        while (state.waste.length > 0) {
+          const card = state.waste.pop();
+          card.faceUp = false;
+          state.stock.push(card);
+        }
+        state.moves++;
+        state.score = Math.max(0, state.score - 15);
+        playSound('flip');
+        updateHUD();
+        renderBoard();
+      }
+    }
+
+    // --- 移動元から移動対象カード配列を取得（厳格検証付き） ---
+    function getValidMovingCards(source) {
+      if (!source) return null;
+
+      if (source.type === 'waste') {
+        if (state.waste.length === 0) return null;
+        const topIdx = state.waste.length - 1;
+        // 捨て札は常に一番上の最新1枚のみ移動許可（途中の札は絶対に不可）
+        if (source.index !== undefined && source.index !== topIdx) return null;
+        return [state.waste[topIdx]];
+      }
+
+      if (source.type === 'foundation') {
+        const pile = state.foundations[source.foundationIdx];
+        if (!pile || pile.length === 0) return null;
+        const topIdx = pile.length - 1;
+        if (source.index !== undefined && source.index !== topIdx) return null;
+        return [pile[topIdx]];
+      }
+
+      if (source.type === 'tableau') {
+        const col = state.tableau[source.col];
+        if (!col || source.index < 0 || source.index >= col.length) return null;
+        if (!col[source.index].faceUp) return null;
+        return col.slice(source.index);
+      }
+
+      return null;
+    }
+
+    // --- カード移動の実行 ---
+    function executeMove(source, target) {
+      const movingCards = getValidMovingCards(source);
+      if (!movingCards || movingCards.length === 0) return false;
+      const leadCard = movingCards[0];
+
+      if (target.type === 'foundation') {
+        if (movingCards.length !== 1) return false;
+        if (!canMoveToFoundation(leadCard, target.foundationIdx)) return false;
+
+        saveSnapshot();
+        removeCardsFromSource(source);
+        state.foundations[target.foundationIdx].push(leadCard);
+        state.moves++;
+        state.score += 10;
+        revealTopTableauCard(source);
+        playSound('foundation');
+      } else if (target.type === 'tableau') {
+        if (source.type === 'tableau' && source.col === target.col) return false;
+        if (!canMoveToTableau(leadCard, target.col)) return false;
+
+        saveSnapshot();
+        removeCardsFromSource(source);
+        state.tableau[target.col].push(...movingCards);
+        state.moves++;
+        if (source.type === 'waste') state.score += 5;
+        if (source.type === 'foundation') state.score = Math.max(0, state.score - 10);
+        revealTopTableauCard(source);
+        playSound('place');
+      } else {
+        return false;
+      }
+
+      clearHints();
+      updateHUD();
+      renderBoard();
+      checkWinOrAutoComplete();
+      return true;
+    }
+
+    function removeCardsFromSource(source) {
+      if (source.type === 'waste') {
+        state.waste.pop();
+      } else if (source.type === 'foundation') {
+        state.foundations[source.foundationIdx].pop();
+      } else if (source.type === 'tableau') {
+        state.tableau[source.col].splice(source.index);
+      }
+    }
+
+    function revealTopTableauCard(source) {
+      if (source.type === 'tableau') {
+        const col = state.tableau[source.col];
+        if (col.length > 0 && !col[col.length - 1].faceUp) {
+          col[col.length - 1].faceUp = true;
+          state.score += 5;
+        }
+      }
+    }
+
+    // --- ワンタップ自動移動 ---
+    function tryAutoMove(source) {
+      const movingCards = getValidMovingCards(source);
+      if (!movingCards || movingCards.length === 0) return;
+      const leadCard = movingCards[0];
+
+      // 1. 単体カードなら組札（Foundation）への移動を最優先
+      if (movingCards.length === 1 && source.type !== 'foundation') {
+        if (canMoveToFoundation(leadCard, leadCard.foundationIdx)) {
+          executeMove(source, { type: 'foundation', foundationIdx: leadCard.foundationIdx });
+          return;
+        }
+      }
+
+      // 2. 場札（Tableau）への移動先を探索（すでにカードがある列を優先）
+      for (let c = 0; c < 7; c++) {
+        if (source.type === 'tableau' && source.col === c) continue;
+        if (state.tableau[c].length > 0 && canMoveToTableau(leadCard, c)) {
+          executeMove(source, { type: 'tableau', col: c });
+          return;
+        }
+      }
+
+      // 3. キング（K）なら空の列へ移動
+      if (leadCard.rank === 13) {
+        if (source.type === 'tableau' && source.index === 0) return;
+        for (let c = 0; c < 7; c++) {
+          if (state.tableau[c].length === 0) {
+            executeMove(source, { type: 'tableau', col: c });
+            return;
+          }
+        }
+      }
+    }
+
+    // --- Pointer Events による滑らかなドラッグ＆タップ処理 ---
+    let dragContext = null;
+
+    function bindCardInteractions(el, source) {
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        if (state.isAutoCompleting || state.isWon) return;
+
+        // 捨て札の場合は必ず一番上のカードであることを再確認
+        if (source.type === 'waste' && source.index !== state.waste.length - 1) return;
+
+        e.stopPropagation();
+        ensureTimerRunning();
+        clearHints();
+
+        const movingCards = getValidMovingCards(source);
+        if (!movingCards || movingCards.length === 0) return;
+
+        const rect = el.getBoundingClientRect();
+        dragContext = {
+          source: source,
+          movingCards: movingCards,
+          startX: e.clientX,
+          startY: e.clientY,
+          offsetX: e.clientX - rect.left,
+          offsetY: e.clientY - rect.top,
+          cardWidth: rect.width,
+          isDragging: false,
+          sourceElements: []
+        };
+
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch (err) {}
       });
 
-      checkAutoComplete();
-    }
+      el.addEventListener('pointermove', (e) => {
+        if (!dragContext) return;
+        const dx = e.clientX - dragContext.startX;
+        const dy = e.clientY - dragContext.startY;
 
-    // ドラッグ＆ドロップエンジン
-    function startPointerDrag(e, card, source, col, row) {
-      if (isAutoCompleting || e.button === 2) return;
-
-      const cardElem = e.currentTarget;
-      const rect = cardElem.getBoundingClientRect();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const offsetX = startX - rect.left;
-      const offsetY = startY - rect.top;
-
-      let movingCards = [];
-      let movingElements = [];
-
-      if (source === 'waste') {
-        movingCards = [waste[waste.length - 1]];
-        movingElements = [cardElem];
-      } else if (source === 'tableau') {
-        movingCards = tableaus[col].slice(row);
-        const parent = cardElem.parentElement;
-        const allChildren = Array.from(parent.children);
-        movingElements = allChildren.slice(row);
-      } else if (source === 'foundation') {
-        movingCards = [foundations[col][foundations[col].length - 1]];
-        movingElements = [cardElem];
-      }
-
-      let isDragging = false;
-
-      function onPointerMove(moveEvent) {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
-
-        if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-          isDragging = true;
-          movingElements.forEach((el, idx) => {
-            el.classList.add('dragging');
-            el.style.zIndex = String(9000 + idx);
-            el.style.pointerEvents = 'none';
-          });
+        if (!dragContext.isDragging && Math.hypot(dx, dy) > 6) {
+          dragContext.isDragging = true;
+          startVisualDrag(dragContext);
         }
 
-        if (isDragging) {
-          const baseLeft = moveEvent.clientX - offsetX;
-          const baseTop = moveEvent.clientY - offsetY;
-          movingElements.forEach((el, idx) => {
-            el.style.position = 'fixed';
-            el.style.left = `${baseLeft}px`;
-            el.style.top = `${baseTop + idx * 26}px`;
-            el.style.width = `${rect.width}px`;
-            el.style.height = `${rect.height}px`;
-          });
+        if (dragContext.isDragging) {
+          const dragLayer = document.getElementById('drag-layer');
+          dragLayer.style.transform = `translate3d(${e.clientX - dragContext.offsetX}px, ${e.clientY - dragContext.offsetY}px, 0)`;
         }
-      }
+      });
 
-      function onPointerUp(upEvent) {
-        window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerup', onPointerUp);
+      el.addEventListener('pointerup', (e) => {
+        if (!dragContext) return;
+        const ctx = dragContext;
+        dragContext = null;
 
-        if (isDragging) {
-          const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-          if (dropTarget) {
-            const slot = dropTarget.closest('.card-slot');
-            if (slot) {
-              const slotId = slot.id;
-              if (slotId.startsWith('foundation-')) {
-                const targetFIdx = parseInt(slotId.replace('foundation-', ''), 10);
-                if (movingCards.length === 1 && canPlaceOnFoundation(movingCards[0], targetFIdx)) {
-                  saveState();
-                  executeMove(source, col, row, 'foundation', targetFIdx, movingCards);
-                  score += 10;
-                  playSound('foundation');
-                }
-              } else if (slotId.startsWith('tableau-')) {
-                const targetTIdx = parseInt(slotId.replace('tableau-', ''), 10);
-                if (canPlaceOnTableau(movingCards[0], targetTIdx)) {
-                  saveState();
-                  executeMove(source, col, row, 'tableau', targetTIdx, movingCards);
-                  score += 5;
-                  playSound('place');
-                }
-              }
-            }
-          }
-          render();
-        } else {
-          tryAutoMove(card, source, col, row);
+        try {
+          el.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+
+        if (!ctx.isDragging) {
+          tryAutoMove(ctx.source);
+          return;
         }
-      }
 
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
+        finishVisualDrag(ctx, e.clientX, e.clientY);
+      });
+
+      el.addEventListener('pointercancel', () => {
+        if (dragContext) {
+          cleanupDragLayer(dragContext);
+          dragContext = null;
+        }
+      });
     }
 
-    function canPlaceOnFoundation(card, fIdx) {
-      const f = foundations[fIdx];
-      const targetSuit = SUITS[fIdx];
-      if (card.suit !== targetSuit) return false;
-      if (f.length === 0) return card.rank === 1;
-      return card.rank === f[f.length - 1].rank + 1;
-    }
+    function startVisualDrag(ctx) {
+      const dragLayer = document.getElementById('drag-layer');
+      dragLayer.innerHTML = '';
+      dragLayer.style.width = `${ctx.cardWidth}px`;
+      dragLayer.style.transform = `translate3d(${ctx.startX - ctx.offsetX}px, ${ctx.startY - ctx.offsetY}px, 0)`;
 
-    function canPlaceOnTableau(card, tIdx) {
-      const t = tableaus[tIdx];
-      if (t.length === 0) return card.rank === 13;
-      const top = t[t.length - 1];
-      if (!top.faceUp) return false;
-      return card.color !== top.color && card.rank === top.rank - 1;
-    }
+      const isMobile = window.innerWidth < 640;
+      const faceUpOffset = isMobile ? 22 : 30;
 
-    function executeMove(fromType, fromCol, fromRow, toType, toCol, movingCards) {
-      if (fromType === 'waste') {
-        waste.pop();
-      } else if (fromType === 'tableau') {
-        tableaus[fromCol].splice(fromRow, movingCards.length);
-        if (tableaus[fromCol].length > 0) {
-          tableaus[fromCol][tableaus[fromCol].length - 1].faceUp = true;
+      ctx.movingCards.forEach((card, idx) => {
+        const ghost = createCardElement(card, null);
+        ghost.style.position = 'absolute';
+        ghost.style.top = `${idx * faceUpOffset}px`;
+        ghost.style.left = '0';
+        ghost.style.width = '100%';
+        ghost.style.boxShadow = '0 18px 28px -6px rgba(15, 23, 42, 0.35)';
+        dragLayer.appendChild(ghost);
+      });
+
+      if (ctx.source.type === 'waste') {
+        const wEl = document.querySelector('#waste-slot .playing-card');
+        if (wEl) {
+          wEl.style.opacity = '0.25';
+          ctx.sourceElements.push(wEl);
         }
-      } else if (fromType === 'foundation') {
-        foundations[fromCol].pop();
-      }
-
-      if (toType === 'foundation') {
-        foundations[toCol].push(movingCards[0]);
-      } else if (toType === 'tableau') {
-        tableaus[toCol].push(...movingCards);
-      }
-    }
-
-    function tryAutoMove(card, source, col, row) {
-      if (!card.faceUp || isAutoCompleting) return;
-
-      for (let fIdx = 0; fIdx < 4; fIdx++) {
-        if (canPlaceOnFoundation(card, fIdx)) {
-          saveState();
-          const moving = source === 'waste' ? [waste[waste.length - 1]] : (source === 'tableau' ? tableaus[col].slice(row) : []);
-          if (moving.length === 1) {
-            executeMove(source, col, row, 'foundation', fIdx, moving);
-            score += 10;
-            playSound('foundation');
-            render();
-            return;
-          }
+      } else if (ctx.source.type === 'foundation') {
+        const fEl = document.querySelector(`#foundation-${ctx.source.foundationIdx} .playing-card`);
+        if (fEl) {
+          fEl.style.opacity = '0.25';
+          ctx.sourceElements.push(fEl);
         }
-      }
-
-      if (source !== 'tableau' || row === tableaus[col].length - 1) {
-        for (let tIdx = 0; tIdx < 7; tIdx++) {
-          if (source === 'tableau' && col === tIdx) continue;
-          if (canPlaceOnTableau(card, tIdx)) {
-            saveState();
-            const moving = source === 'waste' ? [waste[waste.length - 1]] : tableaus[col].slice(row);
-            executeMove(source, col, row, 'tableau', tIdx, moving);
-            score += 5;
-            playSound('place');
-            render();
-            return;
-          }
+      } else if (ctx.source.type === 'tableau') {
+        const colEl = document.getElementById(`tableau-${ctx.source.col}`);
+        const children = Array.from(colEl.children);
+        for (let i = ctx.source.index; i < children.length; i++) {
+          children[i].style.opacity = '0.25';
+          ctx.sourceElements.push(children[i]);
         }
       }
     }
 
-    function showHint() {
-      clearHints();
-
-      for (let i = 0; i < 7; i++) {
-        if (tableaus[i].length > 0) {
-          const top = tableaus[i][tableaus[i].length - 1];
-          for (let f = 0; f < 4; f++) {
-            if (canPlaceOnFoundation(top, f)) {
-              highlightHint(`#tableau-${i} .playing-card:last-child`, `#foundation-${f}`);
-              return;
-            }
-          }
-        }
-      }
-
-      if (waste.length > 0) {
-        const top = waste[waste.length - 1];
-        for (let f = 0; f < 4; f++) {
-          if (canPlaceOnFoundation(top, f)) {
-            highlightHint('#waste-slot .playing-card', `#foundation-${f}`);
-            return;
-          }
-        }
-      }
-
-      for (let i = 0; i < 7; i++) {
-        for (let r = 0; r < tableaus[i].length; r++) {
-          const card = tableaus[i][r];
-          if (!card.faceUp) continue;
-          if (r > 0 && !tableaus[i][r - 1].faceUp) {
-            for (let j = 0; j < 7; j++) {
-              if (i === j) continue;
-              if (canPlaceOnTableau(card, j)) {
-                const targetCard = tableaus[j].length > 0 ? `#tableau-${j} .playing-card:last-child` : `#tableau-${j}`;
-                highlightHint(`#tableau-${i} .playing-card:nth-child(${r + 1})`, targetCard);
-                return;
-              }
-            }
-          }
-        }
-      }
-
-      if (waste.length > 0) {
-        const top = waste[waste.length - 1];
-        for (let j = 0; j < 7; j++) {
-          if (canPlaceOnTableau(top, j)) {
-            const targetCard = tableaus[j].length > 0 ? `#tableau-${j} .playing-card:last-child` : `#tableau-${j}`;
-            highlightHint('#waste-slot .playing-card', targetCard);
-            return;
-          }
-        }
-      }
-
-      if (stock.length > 0 || waste.length > 0) {
-        highlightHint('#stock-slot', null);
+    function cleanupDragLayer(ctx) {
+      document.getElementById('drag-layer').innerHTML = '';
+      if (ctx && ctx.sourceElements) {
+        ctx.sourceElements.forEach(el => {
+          el.style.opacity = '1';
+        });
       }
     }
 
-    function highlightHint(sourceSel, targetSel) {
-      const src = document.querySelector(sourceSel);
-      if (src) src.classList.add('hint-source');
-      if (targetSel) {
-        const tgt = document.querySelector(targetSel);
-        if (tgt) tgt.classList.add('hint-target');
+    function finishVisualDrag(ctx, clientX, clientY) {
+      cleanupDragLayer(ctx);
+
+      const hitElements = document.elementsFromPoint(clientX, clientY);
+      let moved = false;
+
+      for (const el of hitElements) {
+        const fSlot = el.closest('.foundation-slot');
+        if (fSlot) {
+          const fIdx = Number(fSlot.dataset.foundation);
+          moved = executeMove(ctx.source, { type: 'foundation', foundationIdx: fIdx });
+          break;
+        }
+
+        const tCol = el.closest('.tableau-col');
+        if (tCol) {
+          const colIdx = Number(tCol.dataset.col);
+          moved = executeMove(ctx.source, { type: 'tableau', col: colIdx });
+          break;
+        }
       }
-      setTimeout(clearHints, 1500);
+
+      if (!moved) {
+        renderBoard();
+      }
+    }
+
+    // --- 厳格な先読み検証付きスマートヒント機能 ---
+    let deadlockToastTimer = null;
+
+    function showDeadlockToast() {
+      const toast = document.getElementById('deadlock-toast');
+      if (!toast) return;
+      clearTimeout(deadlockToastTimer);
+      toast.classList.remove('hidden');
+      deadlockToastTimer = setTimeout(() => {
+        hideDeadlockToast();
+      }, 3200);
+    }
+
+    function hideDeadlockToast() {
+      const toast = document.getElementById('deadlock-toast');
+      if (!toast) return;
+      clearTimeout(deadlockToastTimer);
+      toast.classList.add('hidden');
     }
 
     function clearHints() {
-      document.querySelectorAll('.hint-source').forEach(el => el.classList.remove('hint-source'));
-      document.querySelectorAll('.hint-target').forEach(el => el.classList.remove('hint-target'));
+      document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
+      hideDeadlockToast();
     }
 
-    function saveState() {
-      moveHistory.push(JSON.stringify({
-        stock, waste, foundations, tableaus, score
-      }));
+    // 山札・捨て札の全カードを事前走査し、現在組札または場札に置けるカードが1枚でも存在するか検証
+    function hasPlayableCardInDeckOrWaste() {
+      const remainingCards = [...state.stock, ...state.waste];
+      for (const card of remainingCards) {
+        if (canMoveToFoundation(card, card.foundationIdx)) return true;
+        for (let c = 0; c < 7; c++) {
+          if (canMoveToTableau(card, c)) return true;
+        }
+      }
+      return false;
     }
 
-    function undoMove() {
-      if (moveHistory.length === 0 || isAutoCompleting) return;
-      const prev = JSON.parse(moveHistory.pop());
-      stock = prev.stock;
-      waste = prev.waste;
-      foundations = prev.foundations;
-      tableaus = prev.tableaus;
-      score = prev.score;
-      render();
-    }
+    function showHint() {
+      if (state.isAutoCompleting || state.isWon) return;
+      clearHints();
 
-    function checkAutoComplete() {
-      const totalInFoundation = foundations.reduce((acc, f) => acc + f.length, 0);
-      if (totalInFoundation === 52) {
-        showWinModal();
+      // 優先度1: 捨て札の【一番上の1枚のみ】または場札の最上段から組札へ置ける手
+      if (state.waste.length > 0) {
+        const topWaste = state.waste[state.waste.length - 1];
+        if (canMoveToFoundation(topWaste, topWaste.foundationIdx)) {
+          const wEl = document.querySelector('#waste-slot .playing-card');
+          if (wEl) highlightElement(wEl);
+          highlightElement(document.getElementById(`foundation-${topWaste.foundationIdx}`));
+          return;
+        }
+      }
+
+      for (let c = 0; c < 7; c++) {
+        const col = state.tableau[c];
+        if (col.length > 0) {
+          const topCard = col[col.length - 1];
+          if (canMoveToFoundation(topCard, topCard.foundationIdx)) {
+            const colEl = document.getElementById(`tableau-${c}`);
+            if (colEl.lastElementChild) highlightElement(colEl.lastElementChild);
+            highlightElement(document.getElementById(`foundation-${topCard.foundationIdx}`));
+            return;
+          }
+        }
+      }
+
+      // 優先度2: 裏向きカードを開放できる意味のある場札移動
+      for (let c = 0; c < 7; c++) {
+        const col = state.tableau[c];
+        const firstFaceUpIdx = col.findIndex(card => card.faceUp);
+        if (firstFaceUpIdx === -1) continue;
+
+        const leadCard = col[firstFaceUpIdx];
+        const revealsFaceDown = firstFaceUpIdx > 0;
+        const clearsColumnForKing = (firstFaceUpIdx === 0 && leadCard.rank !== 13);
+
+        if (!revealsFaceDown && !clearsColumnForKing) continue;
+
+        for (let targetC = 0; targetC < 7; targetC++) {
+          if (c === targetC) continue;
+          if (leadCard.rank === 13 && firstFaceUpIdx === 0 && state.tableau[targetC].length === 0) continue;
+          if (canMoveToTableau(leadCard, targetC)) {
+            const colEl = document.getElementById(`tableau-${c}`);
+            if (colEl.children[firstFaceUpIdx]) highlightElement(colEl.children[firstFaceUpIdx]);
+            const targetColEl = document.getElementById(`tableau-${targetC}`);
+            highlightElement(targetColEl.lastElementChild || targetColEl);
+            return;
+          }
+        }
+      }
+
+      // 優先度3: 捨て札の【一番上の1枚のみ】から場札へ置ける手
+      if (state.waste.length > 0) {
+        const topWaste = state.waste[state.waste.length - 1];
+        for (let targetC = 0; targetC < 7; targetC++) {
+          if (canMoveToTableau(topWaste, targetC)) {
+            const wEl = document.querySelector('#waste-slot .playing-card');
+            if (wEl) highlightElement(wEl);
+            const targetColEl = document.getElementById(`tableau-${targetC}`);
+            highlightElement(targetColEl.lastElementChild || targetColEl);
+            return;
+          }
+        }
+      }
+
+      // 優先度4: キングを空の列へ移動してスペースを作る手
+      const emptyColIdx = state.tableau.findIndex(col => col.length === 0);
+      if (emptyColIdx !== -1) {
+        for (let c = 0; c < 7; c++) {
+          const col = state.tableau[c];
+          const firstFaceUpIdx = col.findIndex(card => card.faceUp);
+          if (firstFaceUpIdx > 0 && col[firstFaceUpIdx].rank === 13) {
+            const colEl = document.getElementById(`tableau-${c}`);
+            if (colEl.children[firstFaceUpIdx]) highlightElement(colEl.children[firstFaceUpIdx]);
+            highlightElement(document.getElementById(`tableau-${emptyColIdx}`));
+            return;
+          }
+        }
+      }
+
+      // 優先度5: 山札またはリサイクル（実際に置けるカードが1枚以上実在する場合のみ案内）
+      if ((state.stock.length > 0 || state.waste.length > 0) && hasPlayableCardInDeckOrWaste()) {
+        highlightElement(document.getElementById('stock-slot'));
         return;
       }
 
-      if (isAutoCompleting) return;
+      // 手詰まり通知（山札を光らせず、盤面中央上部に視認性の高い通知バナーを表示）
+      showDeadlockToast();
+      const badge = document.getElementById('status-badge');
+      badge.textContent = '打てる手がありません（手詰まりです）';
+      badge.classList.remove('text-slate-500');
+      badge.classList.add('text-amber-600');
+      setTimeout(() => {
+        if (!state.isWon && !state.isAutoCompleting) {
+          badge.textContent = 'タップで自動移動 / ドラッグで配置';
+          badge.classList.remove('text-amber-600');
+          badge.classList.add('text-slate-500');
+        }
+      }, 3200);
+    }
 
-      const hasHiddenCards = tableaus.some(col => col.some(c => !c.faceUp));
-      if (!hasHiddenCards && stock.length === 0 && waste.length === 0) {
-        isAutoCompleting = true;
-        runAutoComplete();
+    function highlightElement(el) {
+      if (!el) return;
+      el.classList.add('hint-highlight');
+    }
+
+    // --- クリア判定 ＆ 全開放オートコンプリート回収 ---
+    function checkWinOrAutoComplete() {
+      const totalInFoundations = state.foundations.reduce((sum, pile) => sum + pile.length, 0);
+      if (totalInFoundations === 52) {
+        handleVictory();
+        return;
+      }
+
+      const allTableauFaceUp = state.tableau.every(col => col.every(card => card.faceUp));
+      if (state.stock.length === 0 && state.waste.length === 0 && allTableauFaceUp && !state.isAutoCompleting) {
+        startAutoComplete();
       }
     }
 
-    function runAutoComplete() {
-      let moved = false;
-      for (let i = 0; i < 7; i++) {
-        if (tableaus[i].length > 0) {
-          const top = tableaus[i][tableaus[i].length - 1];
-          for (let f = 0; f < 4; f++) {
-            if (canPlaceOnFoundation(top, f)) {
-              executeMove('tableau', i, tableaus[i].length - 1, 'foundation', f, [top]);
-              score += 10;
+    function startAutoComplete() {
+      state.isAutoCompleting = true;
+      updateHUD();
+
+      const badge = document.getElementById('status-badge');
+      badge.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i>全開放！自動回収中...`;
+      badge.className = 'text-xs font-bold text-amber-600 truncate';
+
+      const stepInterval = setInterval(() => {
+        let movedAny = false;
+
+        for (let rank = 1; rank <= 13; rank++) {
+          for (let c = 0; c < 7; c++) {
+            const col = state.tableau[c];
+            if (col.length === 0) continue;
+            const topCard = col[col.length - 1];
+            if (topCard.rank === rank && canMoveToFoundation(topCard, topCard.foundationIdx)) {
+              col.pop();
+              state.foundations[topCard.foundationIdx].push(topCard);
+              state.moves++;
+              state.score += 10;
               playSound('foundation');
-              render();
-              moved = true;
+              updateHUD();
+              renderBoard();
+              movedAny = true;
               break;
             }
           }
+          if (movedAny) break;
         }
-        if (moved) break;
-      }
 
-      if (moved) {
-        setTimeout(runAutoComplete, 75);
-      } else {
-        isAutoCompleting = false;
-      }
+        const total = state.foundations.reduce((sum, pile) => sum + pile.length, 0);
+        if (total === 52 || !movedAny) {
+          clearInterval(stepInterval);
+          state.isAutoCompleting = false;
+          if (total === 52) {
+            handleVictory();
+          }
+        }
+      }, 95);
     }
 
-    function showWinModal() {
+    function handleVictory() {
+      state.isWon = true;
       clearInterval(timerInterval);
-      document.getElementById('win-time').innerText = document.getElementById('time-display').innerText;
-      document.getElementById('win-score').innerText = score;
-      document.getElementById('win-modal').classList.remove('hidden');
-      document.getElementById('win-modal').classList.add('flex');
-      if (window.confetti) {
-        window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      updateHUD();
+      playSound('win');
+
+      const badge = document.getElementById('status-badge');
+      badge.textContent = 'クリア達成！';
+      badge.className = 'text-xs font-bold text-emerald-600 truncate';
+
+      document.getElementById('modal-time').textContent = formatTime(state.seconds);
+      document.getElementById('modal-moves').textContent = state.moves;
+      document.getElementById('modal-score').textContent = state.score;
+
+      const modal = document.getElementById('victory-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
       }
     }
 
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('sound-icon').className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
-    }
+    // --- イベントリスナー登録 ---
+    document.getElementById('stock-slot').addEventListener('click', drawFromStock);
+    document.getElementById('btn-new-game').addEventListener('click', startNewGame);
+    document.getElementById('modal-new-game').addEventListener('click', startNewGame);
+    document.getElementById('btn-undo').addEventListener('click', undoMove);
+    document.getElementById('btn-hint').addEventListener('click', showHint);
+    document.getElementById('deadlock-toast').addEventListener('click', hideDeadlockToast);
+    document.getElementById('deadlock-toast-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideDeadlockToast();
+    });
 
-    window.onload = () => {
-      newGame();
-    };
+    document.getElementById('sound-toggle').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('sound-icon');
+      icon.className = soundEnabled ? 'fa-solid fa-volume-high text-xs' : 'fa-solid fa-volume-xmark text-xs text-slate-400';
+      if (soundEnabled) playSound('flip');
+    });
+
+    let resizeTimeout = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        renderBoard();
+      }, 100);
+    });
+
+    // 初期ゲーム開始
+    window.addEventListener('DOMContentLoaded', startNewGame);
   </script>
 </body>
 </html>
